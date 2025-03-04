@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All-in-One Banking & Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="CustomEase.min.js"></script>
+    <script src="gsap.min.js"></script>
+    <script src="chart.js" defer></script>
+    <script src="Sortable.min.js" defer></script>
+    <script src="raw.js" defer></script>
+    <script src="pdf-lib.min.js" defer></script>
+    <script src="constants.js" defer></script>
+    <script src="utils.js" defer></script>
+    <script src="eventHandlers.js" defer></script>
+    <script src="pdfHandlers.js" defer></script>
+    <script src="chartUtils.js" defer></script>
+    <script src="emiCalculator.js" defer></script>
+    <script src="agePicker.js" defer></script>
+    <script src="wealthSimulator.js" defer></script>
+    <script src="main.js" defer></script>
+    <script src="cbsData.js" defer></script>
+    <script src="cbshierarchy.js" defer></script>
+</head>
+<body>
+    <div id="menu">
+		<div class="hamburger">
+			<div class="line"></div>
+			<div class="line"></div>
+			<div class="line"></div>
+		</div>
+		<div class="menu-inner">
+			
+			<ul id="menu-inner-ul">
+				<li data-tab="documentation"><i class="material-icons">description</i> Documentation</li>
+                <li data-tab="emi-calculator"><i class="material-icons">calculate</i> EMI Calculator</li>
+                <li data-tab="wealth-simulator"><i class="material-icons">savings</i> Wealth Simulator</li>
+                <li data-tab="cbs-hierarchy"><i class="material-icons">account_tree</i> CBS Hierarchy</li>
+			</ul>
+
+            <!-- Signature Section -->
+            <div class="signature">
+                <div class="signature-name">Nitin Kotwar</div>
+                <div class="signature-details">
+                    <span><i class="material-icons">badge</i> PF 139535</span>
+                    <span><i class="material-icons">phone</i> 8267818491</span>
+                </div>
+                <div class="disclaimer">
+                    <small>© For Internal Use Only.</small>
+                </div>
+            </div>
+
+		</div>
+		
+		<svg version="1.1" id="blob"xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+			<path id="blob-path" d="M60,500H0V0h60c0,0,20,172,20,250S60,900,60,500z"/>
+		</svg>
+	</div>
+
+    <h2 id="h2h2"></h2>
+
+    <!-- Main Content -->
+    <div class="container" id="container">
+        <!-- Documentation Section (Default View) -->
+        <div id="documentation" class="content active">
+            <div id="logoimg">
+                image1
+            </div>
+            <h2>Documentation</h2>
+            <h4>[Beta Release for staff]</h4>
+
+            <select id="presetSelector">
+                <option value="">Select a Preset</option>
+                <option value="CKCC Renewal">CKCC Renewal</option>
+                <option value="DL-OD AGAINST FD MMDC">DL-OD AGAINST FD MMDC</option>
+                <option value="Deceased Case Settlement with Nomination">Deceased Case Settlement with Nomination</option>
+                <option value="CC Renewal - Proprietor">CC Renewal - Proprietor</option>
+            </select>
+
+            <!-- Search input -->
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="Search PDFs...">
+                <span class="search-icon">&#128269;</span>
+                <div id="searchResults" class="search-results"></div>
+            </div>
+
+            <!-- Toast Notifications -->
+            <div id="toastContainer" class="toast-container"></div>
+
+            <!-- Selected PDFs container -->
+            <div id="selectedPdfsContainer" class="selected-pdfs">
+                <h3>Selected PDFs</h3>
+                <div id="selectedPdfsList"></div>
+                <div class="bulk-actions">
+                    <button id="clearAll" class="clear-button" aria-label="Clear All">
+                        <span class="icon">🗑️</span> Clear All
+                    </button>
+                </div>
+            </div>
+
+            <!-- Form Container -->
+            <div id="formContainer"></div>
+            <button id="fillAndOpen" disabled>
+                <span class="icon">📄</span> Fill & Open PDF
+            </button>
+            <iframe id="pdfViewer" style="width: 100%; height: 500px; display: none;"></iframe>
+        </div>
+
+        <!-- EMI Calculator Section -->
+        <div id="emi-calculator" class="content">
+            <h2>Loan EMI Calculator</h2>
+        
+            <!-- First two divs (input fields and chart) -->
+            <div class="emi-calculator-content">
+                <!-- Input fields section -->
+                <div class="input-fields">
+                    <div class="input-group">
+                        <label>Loan Amount (₹):</label>
+                        <input type="number" id="loan-amount" placeholder="e.g., 1200000" value="1200000">
+                    </div>
+                    <div class="input-group">
+                        <label>Interest Rate (%):</label>
+                        <input type="number" id="interest-rate" placeholder="e.g., 8.5" value="8.5">
+                    </div>
+                    <div class="input-group">
+                        <label>Loan Tenure (Years):</label>
+                        <input type="number" id="loan-tenure" placeholder="e.g., 12" value="12">
+                    </div>
+                    <div class="input-group">
+                        <label>Moratorium Period (Months):</label>
+                        <input type="number" id="moratorium" placeholder="e.g., 18" value="0">
+                    </div>
+                    <div class="input-group">
+                        <label>Interest Served During Moratorium:</label>
+                        <select id="interest-served-moratorium">
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Net Monthly Income (₹):</label>
+                        <input type="number" id="net-monthly-income" placeholder="e.g., 56000" value="100000">
+                    </div>
+                    <div class="input-group">
+                        <label>Existing EMI (₹):</label>
+                        <input type="number" id="existing-emi" placeholder="e.g., 4000" value="0">
+                    </div>
+                    <button id="calculate-emi">Calculate EMI</button>
+        
+                    <!-- EMI Slider -->
+                    <div class="input-group">
+                        <label>Adjust EMI (₹):</label>
+                        <input type="range" id="emi-slider" min="0" max="100000" step="100">
+                    </div>
+                    <div class="result-card">
+                        <p>Forced EMI: <span id="new-emi">₹0.00</span></p>
+                        <p>Interest Saved: <span id="emi-saved">₹0.00</span></p>
+                        <p>EMI Saved: <span id="new-tenure">0 months</span></p>
+                    </div>
+                </div>
+        
+                <!-- Chart section -->
+                <div class="result-container chart-section">
+                    <div class="summary-chart">
+                        <canvas id="summaryChart"></canvas>
+                    </div>
+                    <div class="results-panel">
+                        <h2>Summary</h2>
+                        <canvas id="loanChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        
+            <!-- Results section -->
+            <div class="result-container results-section">
+                <h3>Results</h3>
+                <div class="result-grid">
+                    <!-- Permissible NMI/EMI Ratio -->
+                    <div class="result-card">
+                        <div class="result-header">
+                            <i class="material-icons">percent</i>
+                            <span>Permissible NMI/EMI Ratio</span>
+                        </div>
+                        <div class="result-value" id="nmi-emi-ratio">0.00%</div>
+                        <div class="progress-bar">
+                            <div class="progress" style="width: 0%;"></div>
+                        </div>
+                    </div>
+        
+                    <!-- Max EMI Capacity -->
+                    <div class="result-card">
+                        <div class="result-header">
+                            <i class="material-icons">currency_rupee</i>
+                            <span>Max EMI Capacity</span>
+                        </div>
+                        <div class="result-value" id="max-emi-capacity">₹0.00</div>
+                    </div>
+        
+                    <!-- Max Permissible Finance -->
+                    <div class="result-card">
+                        <div class="result-header">
+                            <i class="material-icons">savings</i>
+                            <span>Max Permissible Finance</span>
+                        </div>
+                        <div class="result-value" id="max-permissible-finance">₹0.00</div>
+                    </div>
+        
+                    <!-- EMI During Moratorium -->
+                    <div class="result-card">
+                        <div class="result-header">
+                            <i class="material-icons">pause_circle</i>
+                            <span>EMI During Moratorium</span>
+                        </div>
+                        <div class="result-value" id="emi-during-moratorium">₹0.00</div>
+                    </div>
+        
+                    <!-- EMI Post Moratorium -->
+                    <div class="result-card">
+                        <div class="result-header">
+                            <i class="material-icons">play_circle</i>
+                            <span>EMI Post Moratorium</span>
+                        </div>
+                        <div class="result-value" id="emi-post-moratorium">₹0.00</div>
+                    </div>
+        
+                    <!-- EMI Post Moratorium (Interest Not Served) -->
+                    <div class="result-card">
+                        <div class="result-header">
+                            <i class="material-icons">warning</i>
+                            <span>EMI Post Moratorium (Interest Not Served)</span>
+                        </div>
+                        <div class="result-value" id="emi-post-moratorium-no-interest">₹0.00</div>
+                    </div>
+        
+                    <!-- EMI (No Moratorium) -->
+                    <div class="result-card">
+                        <div class="result-header">
+                            <i class="material-icons">trending_up</i>
+                            <span>EMI (No Moratorium)</span>
+                        </div>
+                        <div class="result-value" id="emi-no-moratorium">₹0.00</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wealth Simulator Section -->
+        <div id="wealth-simulator" class="content">
+            <h2>Wealth Simulator</h2>
+            <div class="calculator-tabs">
+                <button class="tab-button active" data-calculator="apy">APY Calculator</button>
+                <button class="tab-button" data-calculator="sukanya">Sukanya Samriddhi</button>
+                <button class="tab-button" data-calculator="ppf">PPF Calculator</button>
+                <button class="tab-button" data-calculator="fd">Fixed Deposit</button>
+                <button class="tab-button" data-calculator="rd">Recurring Deposit</button>
+            </div>
+
+            <!-- APY Calculator -->
+            <div id="apy-calculator" class="calculator-content active">
+                <h3>Atal Pension Yojana (APY) Calculator</h3>
+                <div class="input-panel">
+                    <div class="input-fields">
+                        <div class="input-group">
+                            <label>Age of Subscriber (Years):</label>
+                            <input type="number" id="apy-age" placeholder="e.g., 25" min="18" max="40" value = "25">
+                        </div>
+                        <div class="input-group">
+                            <label>Desired Pension Amount (₹):</label>
+                            <select id="apy-pension-amount">
+                                <option value="1000">₹1,000</option>
+                                <option value="2000">₹2,000</option>
+                                <option value="3000">₹3,000</option>
+                                <option value="4000">₹4,000</option>
+                                <option value="5000">₹5,000</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Contribution Frequency:</label>
+                            <select id="apy-frequency">
+                                <option value="monthly">Monthly</option>
+                                <option value="quarterly">Quarterly</option>
+                                <option value="half-yearly">Half-Yearly</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Are you an income tax payer?</label>
+                            <select id="apy-tax-payer">
+                                <option value="no">No</option>
+                                <option value="yes">Yes</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Assumed Return Rate (%):</label>
+                            <input type="number" id="apy-return-rate" placeholder="e.g., 8" value="8">
+                        </div>
+                        <div class="input-group">
+                            <label>Annuity Rate at Retirement (%):</label>
+                            <input type="number" id="apy-annuity-rate" placeholder="e.g., 7" value="7">
+                        </div>
+                        <button id="calculate-apy">Calculate APY</button>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="apy-contribution-breakdown-chart"></canvas>
+                    </div>
+                </div>
+                <div class="result-card">
+                    <h4>Results</h4>
+                    <div class="result-item">
+                        <label>Monthly Contribution Amount:</label>
+                        <span id="apy-contribution-amount">₹0.00</span>
+                    </div>
+                    <div class="result-item">
+                        <label>Total Contribution:</label>
+                        <span id="apy-total-contribution">₹0.00</span>
+                    </div>
+                    <div class="result-item">
+                        <label>Government Co-Contribution:</label>
+                        <span id="apy-government-co-contribution">₹0.00</span>
+                    </div>
+                    <div class="result-item">
+                        <label>
+                            Total Corpus:
+                            <span class="tooltip">
+                                <i class="material-icons">info_outline</i>
+                                <span class="tooltiptext">
+                                    <strong>How APY Funds Are Invested:</strong>
+                                    <p>The funds collected under APY are managed by pension fund managers (PFMs) appointed by PFRDA, and they are invested in a mix of financial instruments:</p>
+                                    <ul>
+                                        <li>
+                                            <strong>Government Securities (G-Secs) – 45% to 50%</strong>
+                                            <ul>
+                                                <li>Safe investment option that ensures stability.</li>
+                                            </ul>
+                                        </li>
+                                        <li>
+                                            <strong>Debt Instruments and Term Deposits of Banks – 35%</strong>
+                                            <ul>
+                                                <li>Includes corporate bonds, bank fixed deposits, and other secured debt instruments.</li>
+                                            </ul>
+                                        </li>
+                                        <li>
+                                            <strong>Equity and Related Investments – 5% to 15%</strong>
+                                            <ul>
+                                                <li>A small portion is invested in equity markets to generate returns, following the Nifty 50 or Sensex index.</li>
+                                            </ul>
+                                        </li>
+                                        <li>
+                                            <strong>Money Market Instruments – Up to 5%</strong>
+                                            <ul>
+                                                <li>Includes Treasury Bills (T-Bills), Commercial Papers (CPs), and other short-term investments for liquidity.</li>
+                                            </ul>
+                                        </li>
+                                    </ul>
+                                </span>
+                            </span>
+                        </label>
+                        <span id="apy-corpus">₹0.00</span>
+                    </div>
+                    <div class="result-item">
+                        <label>Pension Amount from Age 60:</label>
+                        <span id="apy-pension-amount-result">₹0.00</span>
+                    </div>
+                    <div class="result-item">
+                        <label>Return of Corpus to Nominee:</label>
+                        <span id="apy-return-of-corpus">₹0.00</span>
+                    </div>
+                    <div class="result-item">
+                        <label>
+                            NPV of Pension Payments at Age 60:
+                            <span class="tooltip">
+                                <i class="material-icons">info_outline</i>
+                                <span class="tooltiptext">
+                                    <strong>NPV of Future Pension Payments at Age 60:</strong>
+                                    <ul>
+                                        <li><strong>Best Option:</strong> This reflects the present value of all future pension payments at the time the pension starts (age 60). It accounts for the time value of money and provides a realistic estimate of the pension's worth at retirement.</li>
+                                        <li><strong>Why It Makes Sense:</strong> It aligns with the timeline of the pension and gives a clear picture of the pension's value when it starts.</li>
+                                    </ul>
+                                </span>
+                            </span>
+                        </label>
+                        <span id="apy-npv-pension">₹0.00</span>
+                    </div>
+                </div>
+                <div class="info-card">
+                    <h4>Key Information:</h4>
+                    <ul>
+                        <li><strong>Eligibility:</strong> Age 18 to 40 years.</li>
+                        <li><strong>Pension Start Age:</strong> 60 years.</li>
+                        <li><strong>Government Co-Contribution:</strong> 50% of your contribution or ₹1,000 per year (whichever is lower) for 5 years (for non-tax payers).</li>
+                        <li><strong>On Demise:</strong>
+                            <ul>
+                                <li>Spouse can continue the scheme.</li>
+                                <li>If both subscriber and spouse pass away, the corpus is returned to the nominee.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+                <div class="info-card">
+                    <h4>Upgrade/Downgrade Pension Amount:</h4>
+                    <ul>
+                        <li>You can upgrade or downgrade your selected pension amount once per financial year during the accumulation phase.</li>
+                        <li>Changes will affect your contribution amount and future pension payouts.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Sukanya Samriddhi Calculator -->
+            <div id="sukanya-calculator" class="calculator-content">
+                <h2>Sukanya Samriddhi Yojana Calculator</h2>
+                
+                <!-- Input Panel -->
+                <div class="input-panel">
+                    <div class="input-fields">
+                        <div class="input-group">
+                            <label>Initial Age of Girl (Years):</label>
+                            <input type="number" id="initial-age" placeholder="e.g., 5" min="0" max="10" value="5">
+                        </div>
+                        <div class="input-group">
+                            <label>Deposit Frequency:</label>
+                            <select id="ssy-deposit-frequency">
+                                <option value="monthly">Monthly</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Deposit Amount (₹):</label>
+                            <input type="number" id="ssy-deposit" placeholder="e.g., 150000" min="250" max="150000" value="5000">
+                        </div>
+                        <div class="input-group">
+                            <label>Interest Rate (%):</label>
+                            <input type="number" id="ssy-interest-rate" placeholder="e.g., 8.2" value="8.2">
+                        </div>
+                        <button id="calculate-ssy">Calculate SSY</button>
+                    </div>
+                    
+                    <!-- Withdrawal Options -->
+                    <div class="withdrawal-section">
+                        <div class="withdrawal-cards">
+                            <div class="withdrawal-card" id="education-card">
+                                <i class="fas fa-graduation-cap"></i>
+                                <button id="add-education-withdrawal" class="btn btn-education">
+                                    <div class="button-outer">
+                                      <div class="button-inner">
+                                        <span>Premature Withdrawal - Education</span>
+                                      </div>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="withdrawal-card" id="marriage-card">
+                                <i class="fas fa-ring"></i>
+                                <button id="add-marriage-withdrawal" class="btn btn-education">
+                                    <div class="button-outer">
+                                      <div class="button-inner">
+                                        <span>Premature Withdrawal - Marriage</span>
+                                      </div>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="withdrawal-card" id="premature-card">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <button id="add-premature-withdrawal" class="btn btn-education">
+                                    <div class="button-outer">
+                                      <div class="button-inner">
+                                        <span>Premature Closure</span>
+                                      </div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="withdrawal-list">
+                            <!-- <h4>Withdrawals: </h4> -->
+                            <ul id="withdrawal-list"></ul>
+                            <div class="result-item">
+                                <label>Funds Withdrawn:</label>
+                                <span id="ssy-funds-withdrawn">₹0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- <div id="age-picker-container"></div> -->
+                    <div class="age-picker-container">
+                        <label class="age-picker-label">Age Picker for Withdrawals</label>
+                        <div id="age-picker-container"></div>
+                    </div>
+                    <div style="display: none;" id="selected-age-display">Selected Age: <span id="selected-age">0</span></div>
+                </div>
+            
+                                
+            
+                <!-- Chart -->
+                <div class="chart-container">
+                    <canvas id="ssy-corpus-growth-chart"></canvas>
+                </div>
+
+                <!-- Results -->
+                <div class="result-card">
+                    <h4>Results</h4>
+                    <div class="result-item">
+                        <label>Total Corpus at Maturity:</label>
+                        <span id="ssy-total-corpus">₹0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PPF Calculator -->
+            <div id="ppf-calculator" class="calculator-content">
+                <h3>Public Provident Fund (PPF)</h3>
+                <div class="input-fields">
+                    <div class="input-group">
+                        <label>Annual Deposit (₹):</label>
+                        <input type="number" id="ppf-deposit" placeholder="e.g., 150000">
+                    </div>
+                    <div class="input-group">
+                        <label>Interest Rate (%):</label>
+                        <input type="number" id="ppf-interest-rate" placeholder="e.g., 7.1">
+                    </div>
+                    <div class="input-group">
+                        <label>Tenure (Years):</label>
+                        <input type="number" id="ppf-tenure" placeholder="e.g., 15">
+                    </div>
+                    <button id="calculate-ppf">Calculate</button>
+                </div>
+                <div class="result-card">
+                    <p>Maturity Amount: <span id="ppf-maturity-amount">₹0.00</span></p>
+                    <p>Interest Earned: <span id="ppf-interest-earned">₹0.00</span></p>
+                </div>
+                <div class="info-card">
+                    <h4>Key Information:</h4>
+                    <ul>
+                        <li>Minimum Tenure: 15 years (extendable in blocks of 5 years).</li>
+                        <li>Premature Withdrawal: Partial withdrawal allowed after 6 years.</li>
+                        <li>Tax Benefits: EEE (Exempt-Exempt-Exempt) under Section 80C.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Fixed Deposit Calculator -->
+            <div id="fd-calculator" class="calculator-content">
+                <h3>Fixed Deposit (FD)</h3>
+                <div class="input-fields">
+                    <div class="input-group">
+                        <label>Principal Amount (₹):</label>
+                        <input type="number" id="fd-principal" placeholder="e.g., 100000">
+                    </div>
+                    <div class="input-group">
+                        <label>Interest Rate (%):</label>
+                        <input type="number" id="fd-interest-rate" placeholder="e.g., 6.5">
+                    </div>
+                    <div class="input-group">
+                        <label>Tenure (Years):</label>
+                        <input type="number" id="fd-tenure" placeholder="e.g., 5">
+                    </div>
+                    <button id="calculate-fd">Calculate</button>
+                </div>
+                <div class="result-card">
+                    <p>Maturity Amount: <span id="fd-maturity-amount">₹0.00</span></p>
+                    <p>Interest Earned: <span id="fd-interest-earned">₹0.00</span></p>
+                </div>
+                <div class="info-card">
+                    <h4>Key Information:</h4>
+                    <ul>
+                        <li>Premature Withdrawal: Penalty of 1-2% on interest.</li>
+                        <li>Tax Implications: Interest is taxable as per your income slab.</li>
+                        <li>Senior Citizen Benefits: Higher interest rates for senior citizens.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Recurring Deposit Calculator -->
+            <div id="rd-calculator" class="calculator-content">
+                <h3>Recurring Deposit (RD)</h3>
+                <div class="input-fields">
+                    <div class="input-group">
+                        <label>Monthly Deposit (₹):</label>
+                        <input type="number" id="rd-deposit" placeholder="e.g., 5000">
+                    </div>
+                    <div class="input-group">
+                        <label>Interest Rate (%):</label>
+                        <input type="number" id="rd-interest-rate" placeholder="e.g., 6.5">
+                    </div>
+                    <div class="input-group">
+                        <label>Tenure (Years):</label>
+                        <input type="number" id="rd-tenure" placeholder="e.g., 5">
+                    </div>
+                    <button id="calculate-rd">Calculate</button>
+                </div>
+                <div class="result-card">
+                    <p>Maturity Amount: <span id="rd-maturity-amount">₹0.00</span></p>
+                    <p>Interest Earned: <span id="rd-interest-earned">₹0.00</span></p>
+                </div>
+                <div class="info-card">
+                    <h4>Key Information:</h4>
+                    <ul>
+                        <li>Premature Withdrawal: Penalty of 1-2% on interest.</li>
+                        <li>Tax Implications: Interest is taxable as per your income slab.</li>
+                        <li>Flexibility: Tenure ranges from 6 months to 10 years.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="chart-container">
+                <canvas id="wealth-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- CBS Hierarchy Section -->
+        <div id="cbs-hierarchy" class="content">
+            <h2>CBS Hierarchy</h2>
+            <div class="cbs-search-container">
+                <input type="text" id="cbsSearchInput" placeholder="Search for an item...">
+            </div>
+            <div id="cbsResults" class="cbs-search-results"></div>
+        </div>
+
+        
+    </div>
+
+    <!-- Sidebar for all available PDFs -->
+    <div id="pdfSidebar">
+        <div id="loadingIndicator" style="display: none;">Loading...</div>
+        <h3>Available PDFs</h3>
+        <div id="allPdfsList"></div>
+        <div id="logoimg2">
+            image2
+        </div>
+    </div>
+</body>
+</html>
