@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FD Comparison Tool</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <div class="container">
+    <div class="input-section">
+      <h1>FD Comparison Tool</h1>
+      <label for="principal">Principal Amount (₹):</label>
+      <input type="number" id="principal" value="1000" min="1" required>
+
+      <label for="startDate">FD Start Date:</label>
+      <input type="date" id="startDate" required>
+
+      <label for="interestRate">Interest Rate (%):</label>
+      <div class="slider-container">
+        <input type="range" id="interestRate" class="slider" min="2" max="12" step="0.05" value="10">
+        <span id="interestRateValue">10%</span>
+      </div>
+
+      <label for="newInterestRate">New Interest Rate (%):</label>
+      <div class="slider-container">
+        <input type="range" id="newInterestRate" class="slider" min="2" max="12" step="0.05" value="11">
+        <span id="newInterestRateValue">11%</span>
+      </div>
+
+      <label for="tenure">Tenure:</label>
+      <div class="tenure-container">
+        <input type="number" id="days" placeholder="Days" min="0">
+        <input type="number" id="months" placeholder="Months" min="0">
+        <input type="number" id="years" placeholder="Years" min="0">
+      </div>
+
+      <label for="newTenure">New Tenure:</label>
+      <div class="tenure-container">
+        <input type="number" id="newDays" placeholder="Days" min="0">
+        <input type="number" id="newMonths" placeholder="Months" min="0">
+        <input type="number" id="newYears" placeholder="Years" min="0">
+      </div>
+
+      <label for="conversionDate">Conversion Date:</label>
+      <input type="date" id="conversionDate" required>
+    </div>
+
+    <div class="chart-section">
+      <canvas id="fdChart"></canvas>
+    </div>
+  </div>
+</body>
+</html>
