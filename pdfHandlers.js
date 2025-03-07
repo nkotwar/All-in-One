@@ -239,7 +239,7 @@ async function loadPdfFields() {
         formContainer.appendChild(input);
     };
 
-    // Add fields in the defined order
+    // Add fields in the defined order, regardless of whether they exist in the PDFs
     fieldOrder.forEach(fieldName => {
         if (uniqueFields.has(fieldName)) {
             createField(fieldName);

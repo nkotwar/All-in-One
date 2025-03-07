@@ -78,9 +78,22 @@ const defaultFieldValues = {
 };
 
 const presets = {
+    "Operation": [
+        "Form - Mobile Number Updation",
+        "Form - Name Updation",
+        "Form - Inoperative to Operative",
+        "Form - Signature Card",
+        "Form - Nomination DA3",
+        "Form - Multipurpose",
+        "Form - INCOME Self Declaration",
+    ],
     "CKCC Renewal": [
         "Agreement for Hypothecation of Crop",
         "CKCC Legal Set"
+    ],
+    "Current Account from RO": [
+        "CURRENT ACCOUNT - ADDRESS INSPECTION DDR NON-PERSONAL CUSTOMER",
+        "CURRENT ACCOUNT - RO Recommendation",
     ],
     "DL-OD AGAINST FD MMDC": [
         "DL-OD AGAINST FD MMDC",
@@ -118,33 +131,39 @@ const fieldOrder = [
     "Rs", "Rs. - Amount Transferred to Dealer", "Rupees", "ROI", "Facility", "Margin", "1st EMI Month", "Purpose of Advance", "Scheme", "Purpose",
 
     // Personal Details
-    "M/s", "Borrower", "Name", "Name Field 1", "Name Field 2", "Mobile No", "email", "PAN", "AADHAR", "Co-Borrower-1", "Co-Borrower-2", "Co-Borrower-3",
+    "M/s", "Borrower", "Old Name", "Name", "Name Field 1", "Name Field 2", "Father Name", "Mobile No", "Old Mobile Number", "Mobile Number", "email", "PAN", "AADHAR", "ID", "Co-Borrower-1", "Co-Borrower-2", "Co-Borrower-3", 
     // Partnership Details
     "Partner 1", "Partner 2", "Partner 3", "Partner 4",
 
     // Account Details
-    "CIF", "CC LOAN Ac No", "Account No", "Saving Ac No", "Saving A/c No", "Udyam", "Nominee A/c No", "Deceased A/c No",
+    "CIF", "CC LOAN Ac No", "Account No", "Account Number", "Saving Ac No", "Saving A/c No", "Account Type", "Udyam", "Nominee A/c No", "Deceased A/c No",
     "Receipt No", "Receipt Current Value", "UTR",
 
     // Address Details
-    "Address", "Supplier Address", "Nominee Address", "Office Address", "Business Address", "Village", "Tehsil", "District",
+    "Address", "Supplier Address", "Nominee Address", "Office Address", "Business Address", "Village", "Tehsil", "District", "Business Description", "Business Nature", "Annual Income",
 
     // Nominee/Deceased Details
-    "Nominee", "Relation", "Deceased", "Date of Demise", "Death Certificate issued by", "Pension Received Posthumous",
+    "Nominee", "Relation", "Deceased", "Date of Demise", "Death Certificate issued by", "Pension Received Posthumous", "Nominee Name", "Nominee Relation", "Nominee Age", "Nominee Date of Birth", 
 
+    // Multipurpose Request
+    "Multipurpose Request 1", "Multipurpose Request 2",
+    
     // Supplier & Quotation Details
     "Supplier", "Quotation No", "Quotation Date",
-
-    // Inspection & Sanction Details
-    "INSPECTING OFFICIAL", "Branch Manager", "Sanction Date", "Sanction Letter No", "Application Date", "Last Documentation Date",
-
+    
     // Business & Sales Information
     "Sales", "Rating", "CIN", "Year of Establishment", "Dealing with us since", "Asset ID",
+
+    // Inspection & Sanction Details
+    "Sanction Date", "Sanction Letter No", "Application Date", "Last Documentation Date",
 
     // Additional Banking & Security Information
     "Security ID", "Policy No", "Policy Valid From", "Policy Valid To",
 
     // Officers & Processing Details
-    "Processing Officer", "Sanctioning Officer"
+    "Processing Officer", "Sanctioning Officer", "INSPECTING OFFICIAL", "Branch Manager",
+
+    //Maker Checker
+    "MAKER", "CHECKER Name", "CHECKER PF", "CHECKER Designation",
 
 ];
