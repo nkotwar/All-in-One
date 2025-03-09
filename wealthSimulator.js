@@ -23,6 +23,44 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    // FD Calculator Logic
+    document.getElementById("calculate-fd").addEventListener("click", () => {
+        const principal = parseFloat(document.getElementById("fd-principal").value);
+        const rate = parseFloat(document.getElementById("fd-interest-rate").value);
+        const tenure = parseFloat(document.getElementById("fd-tenure").value);
+
+        if (isNaN(principal) || isNaN(rate) || isNaN(tenure)) {
+            alert("Please enter valid values for all fields.");
+            return;
+        }
+
+        const maturityAmount = principal * Math.pow(1 + rate / 100, tenure);
+        const interestEarned = maturityAmount - principal;
+
+        document.getElementById("fd-maturity-amount").textContent = `₹${maturityAmount.toFixed(2)}`;
+        document.getElementById("fd-interest-earned").textContent = `₹${interestEarned.toFixed(2)}`;
+    });
+
+    // RD Calculator Logic
+    document.getElementById("calculate-rd").addEventListener("click", () => {
+        const deposit = parseFloat(document.getElementById("rd-deposit").value);
+        const rate = parseFloat(document.getElementById("rd-interest-rate").value);
+        const tenure = parseFloat(document.getElementById("rd-tenure").value);
+
+        if (isNaN(deposit) || isNaN(rate) || isNaN(tenure)) {
+            alert("Please enter valid values for all fields.");
+            return;
+        }
+
+        const n = tenure * 12; // Convert years to months
+        const r = rate / 100 / 12; // Monthly interest rate
+        const maturityAmount = deposit * (((Math.pow(1 + r, n) - 1) / r) * (1 + r));
+        const interestEarned = maturityAmount - (deposit * n);
+
+        document.getElementById("rd-maturity-amount").textContent = `₹${maturityAmount.toFixed(2)}`;
+        document.getElementById("rd-interest-earned").textContent = `₹${interestEarned.toFixed(2)}`;
+    });
+
     // APY Calculator Logic
     document.getElementById("calculate-apy").addEventListener("click", () => {
         // Get input values
@@ -647,41 +685,269 @@ document.addEventListener("DOMContentLoaded", () => {
             },
         });
     }
-    // FD Calculator Logic
-    document.getElementById("calculate-fd").addEventListener("click", () => {
-        const principal = parseFloat(document.getElementById("fd-principal").value);
-        const rate = parseFloat(document.getElementById("fd-interest-rate").value);
-        const tenure = parseFloat(document.getElementById("fd-tenure").value);
+    
+    // PPF Calculator Logic
+    document.getElementById("calculate-ppf").addEventListener("click", () => {
+        const depositFrequency = document.getElementById("ppf-deposit-frequency").value;
+        const deposit = parseFloat(document.getElementById("ppf-deposit").value);
+        const interestRate = parseFloat(document.getElementById("ppf-interest-rate").value) / 100;
+        const tenure = parseInt(document.getElementById("ppf-tenure").value);
+    
+        if (isNaN(deposit) || deposit < 500 || deposit > 150000) {
+            alert("Please enter a valid deposit amount (₹500 to ₹1.5 Lakh).");
+            return;
+        }
+    
+        if (depositFrequency === "monthly" && deposit * 12 > 150000) {
+            alert("Total annual deposit cannot exceed ₹1.5 Lakh.");
+            return;
+        }
+    
+        if (isNaN(interestRate) || interestRate <= 0) {
+            alert("Please enter a valid interest rate (e.g., 7.1 for 7.1%).");
+            return;
+        }
+    
+        if (isNaN(tenure) || tenure < 15 || tenure % 5 !== 0) {
+            alert("Tenure must be a multiple of 5 years (e.g., 15, 20, 25).");
+            return;
+        }
+    
+        // Reset withdrawals when recalculating
+        calculatePPF(depositFrequency, deposit, interestRate, tenure, true);
+    });
 
-        if (isNaN(principal) || isNaN(rate) || isNaN(tenure)) {
-            alert("Please enter valid values for all fields.");
+    let ppfWithdrawals = []; // Array to store withdrawals
+
+    function calculatePPF(depositFrequency, deposit, interestRate, tenure, resetWithdrawals = false) {
+        if (resetWithdrawals) {
+            ppfWithdrawals = []; // Clear all withdrawals
+            updatePPFWithdrawalList(); // Update the UI to reflect the cleared withdrawals
+        }
+    
+        let totalCorpus = 0;
+        let totalDeposits = 0;
+        let corpusGrowth = [];
+        let depositGrowth = []; // Track total deposits over time
+        let withdrawalsOverTime = [];
+    
+        for (let year = 1; year <= tenure; year++) {
+            // Add deposits based on frequency
+            if (depositFrequency === "yearly") {
+                totalDeposits += deposit;
+                totalCorpus += deposit;
+            } else if (depositFrequency === "monthly") {
+                const monthlyDeposit = deposit;
+                for (let month = 1; month <= 12; month++) {
+                    totalDeposits += monthlyDeposit;
+                    totalCorpus += monthlyDeposit;
+                    totalCorpus *= (1 + interestRate / 12); // Monthly compounding
+                }
+            }
+    
+            // Apply yearly interest for yearly deposits
+            if (depositFrequency === "yearly") {
+                totalCorpus *= (1 + interestRate);
+            }
+    
+            // Handle withdrawals
+            ppfWithdrawals.forEach((withdrawal) => {
+                if (withdrawal.year === year) {
+                    const balanceAt4thYear = calculateBalanceAtYear(withdrawal.year - 4); // Balance at end of 4th year preceding withdrawal
+                    const balanceAtPreviousYear = calculateBalanceAtYear(withdrawal.year - 1); // Balance at end of previous year
+                    const withdrawalLimit = Math.min(balanceAt4thYear, balanceAtPreviousYear) * 0.5; // 50% of lower balance
+    
+                    // Deduct withdrawal amount from corpus
+                    totalCorpus -= withdrawalLimit;
+                    withdrawalsOverTime.push({ year, amount: withdrawalLimit });
+                }
+            });
+    
+            // Track corpus and deposit growth
+            corpusGrowth.push(totalCorpus);
+            depositGrowth.push(totalDeposits); // Add total deposits for the current year
+        }
+    
+        // Display results
+        document.getElementById("ppf-total-corpus").textContent = `₹${totalCorpus.toFixed(2)}`;
+        document.getElementById("ppf-interest-earned").textContent = `₹${(totalCorpus - totalDeposits).toFixed(2)}`;
+    
+        // Update withdrawal list
+        updatePPFWithdrawalList();
+    
+        // Update chart
+        updatePPFChart(corpusGrowth, depositGrowth, withdrawalsOverTime);
+    }
+
+    // Add Partial Withdrawal
+    document.getElementById("add-partial-withdrawal").addEventListener("click", () => {
+        const withdrawalYear = parseInt(prompt("Enter the year for partial withdrawal (after 6 years):"));
+        if (isNaN(withdrawalYear) || withdrawalYear < 7) {
+            alert("Partial withdrawals are allowed only after 6 years.");
             return;
         }
 
-        const maturityAmount = principal * Math.pow(1 + rate / 100, tenure);
-        const interestEarned = maturityAmount - principal;
-
-        document.getElementById("fd-maturity-amount").textContent = `₹${maturityAmount.toFixed(2)}`;
-        document.getElementById("fd-interest-earned").textContent = `₹${interestEarned.toFixed(2)}`;
-    });
-
-    // RD Calculator Logic
-    document.getElementById("calculate-rd").addEventListener("click", () => {
-        const deposit = parseFloat(document.getElementById("rd-deposit").value);
-        const rate = parseFloat(document.getElementById("rd-interest-rate").value);
-        const tenure = parseFloat(document.getElementById("rd-tenure").value);
-
-        if (isNaN(deposit) || isNaN(rate) || isNaN(tenure)) {
-            alert("Please enter valid values for all fields.");
+        // Check if a withdrawal already exists for this year
+        const existingWithdrawal = ppfWithdrawals.find((w) => w.year === withdrawalYear);
+        if (existingWithdrawal) {
+            alert("Only one withdrawal is allowed per financial year.");
             return;
         }
 
-        const n = tenure * 12; // Convert years to months
-        const r = rate / 100 / 12; // Monthly interest rate
-        const maturityAmount = deposit * (((Math.pow(1 + r, n) - 1) / r) * (1 + r));
-        const interestEarned = maturityAmount - (deposit * n);
+        // Calculate withdrawal amount based on the balance at the end of the 4th year preceding the withdrawal or the previous year, whichever is lower
+        const balanceAt4thYear = calculateBalanceAtYear(withdrawalYear - 4); // Balance at the end of the 4th year preceding the withdrawal
+        const balanceAtPreviousYear = calculateBalanceAtYear(withdrawalYear - 1); // Balance at the end of the previous year
+        const withdrawalLimit = Math.min(balanceAt4thYear, balanceAtPreviousYear) * 0.5; // 50% of the lower balance
 
-        document.getElementById("rd-maturity-amount").textContent = `₹${maturityAmount.toFixed(2)}`;
-        document.getElementById("rd-interest-earned").textContent = `₹${interestEarned.toFixed(2)}`;
+        ppfWithdrawals.push({ year: withdrawalYear, amount: withdrawalLimit });
+        calculatePPF(
+            document.getElementById("ppf-deposit-frequency").value,
+            parseFloat(document.getElementById("ppf-deposit").value),
+            parseFloat(document.getElementById("ppf-interest-rate").value) / 100,
+            parseInt(document.getElementById("ppf-tenure").value)
+        );
     });
+
+    // Helper function to calculate balance at a specific year
+    function calculateBalanceAtYear(targetYear) {
+        const depositFrequency = document.getElementById("ppf-deposit-frequency").value;
+        const deposit = parseFloat(document.getElementById("ppf-deposit").value);
+        const interestRate = parseFloat(document.getElementById("ppf-interest-rate").value) / 100;
+
+        let totalCorpus = 0;
+        let totalDeposits = 0;
+
+        for (let year = 1; year <= targetYear; year++) {
+            // Add deposits based on frequency
+            if (depositFrequency === "yearly") {
+                totalDeposits += deposit;
+                totalCorpus += deposit;
+            } else if (depositFrequency === "monthly") {
+                const monthlyDeposit = deposit;
+                for (let month = 1; month <= 12; month++) {
+                    totalDeposits += monthlyDeposit;
+                    totalCorpus += monthlyDeposit;
+                    totalCorpus *= (1 + interestRate / 12); // Monthly compounding
+                }
+            }
+
+            // Apply yearly interest for yearly deposits
+            if (depositFrequency === "yearly") {
+                totalCorpus *= (1 + interestRate);
+            }
+        }
+
+        return totalCorpus;
+    }
+
+    // Update Withdrawal List
+    function updatePPFWithdrawalList() {
+        const withdrawalList = document.getElementById("ppf-withdrawal-list");
+        withdrawalList.innerHTML = ""; // Clear the list
+
+        let totalWithdrawn = 0;
+        ppfWithdrawals.forEach((withdrawal) => {
+            const li = document.createElement("li");
+            li.textContent = `Year ${withdrawal.year}: ₹${withdrawal.amount.toFixed(2)}`;
+            withdrawalList.appendChild(li);
+            totalWithdrawn += withdrawal.amount;
+        });
+
+        document.getElementById("ppf-funds-withdrawn").textContent = `₹${totalWithdrawn.toFixed(2)}`;
+    }
+
+    // Update PPF Chart
+    function updatePPFChart(corpusGrowth, depositGrowth, withdrawalsOverTime) {
+        const ctx = document.getElementById('ppf-corpus-growth-chart').getContext('2d');
+    
+        if (window.ppfChart) {
+            window.ppfChart.destroy(); // Destroy existing chart
+        }
+    
+        const labels = corpusGrowth.map((_, index) => `Year ${index + 1}`);
+    
+        // Prepare withdrawal data for the chart
+        const withdrawalData = new Array(corpusGrowth.length).fill(0);
+        withdrawalsOverTime.forEach((withdrawal) => {
+            withdrawalData[withdrawal.year - 1] = withdrawal.amount;
+        });
+    
+        window.ppfChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Corpus Growth',
+                        data: corpusGrowth,
+                        borderColor: '#3498db',
+                        fill: false,
+                    },
+                    {
+                        label: 'Total Deposits',
+                        data: depositGrowth, // Include depositGrowth data
+                        borderColor: '#2ecc71',
+                        fill: false,
+                    },
+                    {
+                        label: 'Withdrawals',
+                        data: withdrawalData,
+                        borderColor: '#e74c3c',
+                        fill: false,
+                        borderDash: [5, 5], // Dashed line for withdrawals
+                    }
+                ]
+            },
+            options: {
+                scales: {
+                    x: { title: { display: true, text: 'Years' } },
+                    y: { title: { display: true, text: 'Amount (₹)' } }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                const label = context.dataset.label || '';
+                                const value = context.raw || 0;
+    
+                                // Check if this is a withdrawal point
+                                if (label === 'Withdrawals' && value > 0) {
+                                    const withdrawalYear = context.dataIndex + 1; // Year of withdrawal
+                                    const balanceAt4thYear = corpusGrowth[withdrawalYear - 4 - 1]; // Balance at end of 4th year preceding withdrawal
+                                    const balanceAtPreviousYear = corpusGrowth[withdrawalYear - 2]; // Balance at end of previous year before withdrawal
+                                    const withdrawalLimit = Math.min(balanceAt4thYear, balanceAtPreviousYear) * 0.5; // 50% of lower balance
+    
+                                    return [
+                                        `Withdrawal: ₹${value.toFixed(2)}`,
+                                        `Balance at end of year ${withdrawalYear - 4}: ₹${balanceAt4thYear.toFixed(2)}`,
+                                        `Balance at end of year ${withdrawalYear - 1}: ₹${balanceAtPreviousYear.toFixed(2)}`,
+                                        `Withdrawal limit (50% of lower balance): ₹${withdrawalLimit.toFixed(2)}`
+                                    ];
+                                }
+    
+                                return `${label}: ₹${value.toFixed(2)}`;
+                            }
+                        }
+                    },
+                    annotation: {
+                        annotations: withdrawalsOverTime.map((withdrawal) => ({
+                            type: 'line',
+                            mode: 'vertical',
+                            scaleID: 'x',
+                            value: `Year ${withdrawal.year}`,
+                            borderColor: '#e74c3c',
+                            borderWidth: 2,
+                            label: {
+                                content: `Withdrawal: ₹${withdrawal.amount.toFixed(2)}`,
+                                enabled: true,
+                                position: 'top',
+                                backgroundColor: '#e74c3c',
+                                color: '#fff',
+                            }
+                        }))
+                    }
+                }
+            }
+        });
+    }
 });

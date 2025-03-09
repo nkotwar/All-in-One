@@ -85,7 +85,6 @@ const presets = {
         "Form - Signature Card",
         "Form - Nomination DA3",
         "Form - Multipurpose",
-        "Form - INCOME Self Declaration",
     ],
     "CKCC Renewal": [
         "Agreement for Hypothecation of Crop",
