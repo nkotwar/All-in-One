@@ -45,6 +45,7 @@ function updateChart(type, data) {
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         'y-axis-emi': {
                             type: 'linear',
@@ -89,6 +90,7 @@ function updateChart(type, data) {
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         y: {
                             beginAtZero: true,
@@ -117,6 +119,7 @@ function updateChart(type, data) {
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         y: {
                             beginAtZero: true,

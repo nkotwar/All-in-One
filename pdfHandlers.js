@@ -88,8 +88,22 @@ function updateSelectedPdfsList() {
 
         const removeButton = document.createElement("button");
         removeButton.textContent = "×";
-        removeButton.addEventListener("click", () => {
-            deselectPdf(pdfName); // Deselect PDF on button click
+
+        // Add click event listener for desktop
+        removeButton.addEventListener('click', () => {
+            const confirmRemove = confirm('Are you sure you want to remove this PDF?');
+            if (confirmRemove) {
+                deselectPdf(pdfName); // Deselect PDF
+            }
+        });
+
+        // Add touch event listener for mobile
+        removeButton.addEventListener('touchstart', function (event) {
+            event.preventDefault(); // Prevent default touch behavior
+            const confirmRemove = confirm('Are you sure you want to remove this PDF?');
+            if (confirmRemove) {
+                deselectPdf(pdfName); // Deselect PDF
+            }
         });
 
         selectedPdfItem.appendChild(pdfNameText);

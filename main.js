@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     const menu = document.getElementById('menu');
+    const hamburgerToggle = document.getElementById('hamburgerToggle');
     const hamburger = document.querySelector('.hamburger');
     const menuInner = document.querySelector('.menu-inner');
     const menuInnerUl = document.getElementById('menu-inner-ul');
@@ -13,17 +14,31 @@ document.addEventListener('DOMContentLoaded', function () {
         pdfSidebar.classList.toggle('active');
     });
 
+    // Add touch event listener for sidebar toggle
+    sidebarToggle.addEventListener('touchstart', function (event) {
+        event.preventDefault(); // Prevent default touch behavior
+        pdfSidebar.classList.toggle('active');
+    });
+
     // Toggle menu on hamburger click
     hamburger.addEventListener('click', function (event) {
         event.stopPropagation();
         menu.classList.toggle('expanded');
     });
 
-    // Close menu when clicking outside of it
-    document.addEventListener('click', function (event) {
-        if (!menu.contains(event.target) ){
-            menu.classList.remove('expanded');
-        }
+    // Add touch event listener for hamburger menu
+    hamburger.addEventListener('touchstart', function (event) {
+        event.stopPropagation();
+        menu.classList.toggle('expanded');
+    });
+
+    hamburgerToggle.addEventListener('click', function () {
+        menu.classList.toggle('expanded');
+    });
+
+    hamburgerToggle.addEventListener('touchstart', function (event) {
+        event.preventDefault(); // Prevent default touch behavior
+        menu.classList.toggle('expanded');
     });
 
     // Tab Switching Logic
