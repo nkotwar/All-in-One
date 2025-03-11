@@ -6,6 +6,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const contents = document.querySelectorAll('.content');
     const pdfSidebar = document.getElementById('pdfSidebar');
     const container = document.getElementById('container');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    
+
+    sidebarToggle.addEventListener('click', function () {
+        pdfSidebar.classList.toggle('active');
+    });
 
     // Toggle menu on hamburger click
     hamburger.addEventListener('click', function (event) {

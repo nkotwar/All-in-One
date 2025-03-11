@@ -12,6 +12,7 @@
     <script src="Sortable.min.js" defer></script>
     <script src="raw1.js" defer></script>
     <script src="raw2.js" defer></script>
+    <script src="raw3.js" defer></script>
     <script src="pdf-lib.min.js" defer></script>
     <script src="constants.js" defer></script>
     <script src="utils.js" defer></script>
@@ -109,6 +110,21 @@
                 <span class="icon">📄</span> Fill & Open PDF
             </button>
             <iframe id="pdfViewer" style="width: 100%; height: 500px; display: none;"></iframe>
+
+            <!-- Sidebar for all available PDFs -->
+            <div id="pdfSidebar">
+                <!-- Toggle button inside the sidebar -->
+                <button id="sidebarToggle" class="sidebar-toggle">
+                    <i class="material-icons">menu</i>
+                </button>
+                <div id="loadingIndicator" style="display: none;">Loading...</div>
+                <h3>Available PDFs</h3>
+                <div id="allPdfsList"></div>
+                <div id="logoimg2">
+                    image2
+                </div>
+            </div>
+
         </div>
 
         <!-- EMI Calculator Section -->
@@ -741,18 +757,6 @@
                 <input type="text" id="cbsSearchInput" placeholder="Search for an item...">
             </div>
             <div id="cbsResults" class="cbs-search-results"></div>
-        </div>
-
-        
-    </div>
-
-    <!-- Sidebar for all available PDFs -->
-    <div id="pdfSidebar">
-        <div id="loadingIndicator" style="display: none;">Loading...</div>
-        <h3>Available PDFs</h3>
-        <div id="allPdfsList"></div>
-        <div id="logoimg2">
-            image2
         </div>
     </div>
 </body>

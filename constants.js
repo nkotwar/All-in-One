@@ -106,6 +106,7 @@ const presets = {
         "Renewal Recommendation - CC Proprietorship",
         "Renewal Sanction Letter - CC Proprietorship",
         "Renewal Process Note - CC Proprietorship",
+        "Rating - CC Proprietorship",
         "DP NOTE SINGLE",
         "LETTER OF WAIVER",
         "LETTER OF INTEREST VARIATION",
