@@ -731,6 +731,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let corpusGrowth = [];
         let depositGrowth = []; // Track total deposits over time
         let withdrawalsOverTime = [];
+        let totalWithdrawn = 0; // Track total withdrawals
     
         for (let year = 1; year <= tenure; year++) {
             // Add deposits based on frequency
@@ -758,9 +759,15 @@ document.addEventListener("DOMContentLoaded", () => {
                     const balanceAtPreviousYear = calculateBalanceAtYear(withdrawal.year - 1); // Balance at end of previous year
                     const withdrawalLimit = Math.min(balanceAt4thYear, balanceAtPreviousYear) * 0.5; // 50% of lower balance
     
-                    // Deduct withdrawal amount from corpus
-                    totalCorpus -= withdrawalLimit;
-                    withdrawalsOverTime.push({ year, amount: withdrawalLimit });
+                    // Ensure withdrawal does not exceed the limit or available corpus
+                    const withdrawalAmount = Math.min(withdrawalLimit, totalCorpus);
+                    if (withdrawalAmount > 0) {
+                        totalCorpus -= withdrawalAmount;
+                        totalWithdrawn += withdrawalAmount; // Add to total withdrawals
+                        withdrawalsOverTime.push({ year, amount: withdrawalAmount });
+                    } else {
+                        alert(`Insufficient balance for withdrawal in Year ${year}.`);
+                    }
                 }
             });
     
@@ -769,9 +776,13 @@ document.addEventListener("DOMContentLoaded", () => {
             depositGrowth.push(totalDeposits); // Add total deposits for the current year
         }
     
+        // Calculate total interest earned
+        const totalInterestEarned = (totalCorpus + totalWithdrawn) - totalDeposits;
+    
         // Display results
         document.getElementById("ppf-total-corpus").textContent = `₹${totalCorpus.toFixed(2)}`;
-        document.getElementById("ppf-interest-earned").textContent = `₹${(totalCorpus - totalDeposits).toFixed(2)}`;
+        document.getElementById("ppf-interest-earned").textContent = `₹${totalInterestEarned.toFixed(2)}`;
+        document.getElementById("ppf-funds-withdrawn").textContent = `₹${totalWithdrawn.toFixed(2)}`;
     
         // Update withdrawal list
         updatePPFWithdrawalList();
@@ -793,6 +804,15 @@ document.addEventListener("DOMContentLoaded", () => {
         if (existingWithdrawal) {
             alert("Only one withdrawal is allowed per financial year.");
             return;
+        }
+
+        // Ensure withdrawal year is greater than the last withdrawn year
+        if (ppfWithdrawals.length > 0) {
+            const lastWithdrawalYear = ppfWithdrawals[ppfWithdrawals.length - 1].year;
+            if (withdrawalYear <= lastWithdrawalYear) {
+                alert(`Withdrawal year must be greater than the last withdrawal year (Year ${lastWithdrawalYear}).`);
+                return;
+            }
         }
 
         // Calculate withdrawal amount based on the balance at the end of the 4th year preceding the withdrawal or the previous year, whichever is lower

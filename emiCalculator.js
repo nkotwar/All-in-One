@@ -80,7 +80,7 @@ function initEMICalculator() {
         const nmiEmiRatio = calculateNMIEMIRatio(netMonthlyIncome);
         const maxEmiCapacity = calculateMaxEMICapacity(netMonthlyIncome, existingEmi, nmiEmiRatio);
         const maxPermissibleFinance = calculateMaxPermissibleFinance(maxEmiCapacity, rate, tenureMonths);
-        const emiDuringMoratorium = calculateEMIDuringMoratorium(principal, rate);
+        const emiDuringMoratorium = calculateEMIDuringMoratorium(principal, rate, moratoriumMonths);
         const emiPostMoratorium = calculateEMIPostMoratorium(principal, rate, tenureMonths, moratoriumMonths);
         const emiPostMoratoriumNoInterest = calculateEMIPostMoratoriumNoInterest(principal, rate, tenureMonths, moratoriumMonths);
         const emiNoMoratorium = calculateEMINoMoratorium(principal, rate, tenureMonths);
@@ -207,7 +207,12 @@ function initEMICalculator() {
         return maxEmiCapacity * ((Math.pow(1 + monthlyRate, tenureMonths) - 1) / (monthlyRate * Math.pow(1 + monthlyRate, tenureMonths)));
     }
 
-    function calculateEMIDuringMoratorium(principal, rate) {
+    function calculateEMIDuringMoratorium(principal, rate, moratoriumMonths = 0) {
+        // If there's no moratorium, return "NA"
+        if (moratoriumMonths === 0) {
+            return 0;
+        }
+    
         const monthlyRate = rate / 12 / 100;
         return principal * monthlyRate;
     }
