@@ -6,15 +6,22 @@ function initEMICalculator() {
         return; // Exit if the EMI Calculator section is not active
     }
 
+    // Initialize variables
+    let loanChart = null;
+    let isInterestServed = false; // Default to false (interest not served during moratorium)
+    let currentEMI = 0; // Track the current EMI value
+    let originalNumberOfPayments = 0; // Track the original number of payments
+
+
     // Get all required elements
     const loanAmountInput = document.getElementById('loan-amount');
     const interestRateInput = document.getElementById('interest-rate');
     const loanTenureInput = document.getElementById('loan-tenure');
     const moratoriumInput = document.getElementById('moratorium');
-    const interestServedMoratoriumInput = document.getElementById('interest-served-moratorium');
     const netMonthlyIncomeInput = document.getElementById('net-monthly-income');
     const existingEmiInput = document.getElementById('existing-emi');
     const calculateEmiButton = document.getElementById('calculate-emi');
+    const recalculateFinanceButton = document.getElementById('recalculate-finance');
     const emiSlider = document.getElementById('emi-slider');
     const newEmiDisplay = document.getElementById('new-emi');
     const emiSavedDisplay = document.getElementById('emi-saved');
@@ -23,76 +30,129 @@ function initEMICalculator() {
 
     const nmiEmiRatioDisplay = document.getElementById('nmi-emi-ratio');
     const maxEmiCapacityDisplay = document.getElementById('max-emi-capacity');
-    const maxPermissibleFinanceDisplay = document.getElementById('max-permissible-finance');
-    const emiDuringMoratoriumDisplay = document.getElementById('emi-during-moratorium');
     const emiPostMoratoriumDisplay = document.getElementById('emi-post-moratorium');
-    const emiPostMoratoriumNoInterestDisplay = document.getElementById('emi-post-moratorium-no-interest');
-    const emiNoMoratoriumDisplay = document.getElementById('emi-no-moratorium');
+    const emiMoratoriumDisplay = document.getElementById('emi-moratorium');
+    const maxLoanEligibilityDisplay = document.getElementById('max-loan-eligibility');
+    const adjustedEmiCapacityDisplay = document.getElementById('adjusted-emi-capacity');
 
     // Get references to the new UI elements
     const progressBar = document.querySelector('.progress');
     const emiValues = document.querySelectorAll('.result-value');
+    const interestServedToggle = document.getElementById('interest-served-toggle');
+    const toggleInterestServedCheckbox = document.getElementById('toggle-interest-served');
+    const emiPostMoratoriumCard = document.getElementById('emi-post-moratorium-card');
 
     // Check if all required elements exist
-    if (!loanAmountInput || !interestRateInput || !loanTenureInput || !moratoriumInput || !netMonthlyIncomeInput || !existingEmiInput || !calculateEmiButton || !emiSlider || !newEmiDisplay || !emiSavedDisplay || !newTenureDisplay || !loanChartCanvas || !nmiEmiRatioDisplay || !maxEmiCapacityDisplay || !maxPermissibleFinanceDisplay || !emiDuringMoratoriumDisplay || !emiPostMoratoriumDisplay || !emiPostMoratoriumNoInterestDisplay || !emiNoMoratoriumDisplay) {
+    if (!loanAmountInput || !interestRateInput || !loanTenureInput || !moratoriumInput || !netMonthlyIncomeInput || !existingEmiInput || !calculateEmiButton || !emiSlider || !newEmiDisplay || !emiSavedDisplay || !newTenureDisplay || !loanChartCanvas || !nmiEmiRatioDisplay || !maxEmiCapacityDisplay || !emiPostMoratoriumDisplay || !emiMoratoriumDisplay) {
         console.error("One or more EMI Calculator elements not found in the DOM.");
         return; // Exit if any required element is missing
     }
 
-    let loanChart;
-    let currentEMI = 0;
-    let originalNumberOfPayments = 0;
+    // Restore toggle state from localStorage
+    const savedInterestServed = localStorage.getItem('isInterestServed');
+    if (savedInterestServed !== null) {
+        isInterestServed = savedInterestServed === 'true'; // Convert string to boolean
+        toggleInterestServedCheckbox.checked = isInterestServed; // Sync the checkbox state
+    }
+
+    toggleInterestServedCheckbox.addEventListener('change', function () {
+        isInterestServed = toggleInterestServedCheckbox.checked; // Update isInterestServed based on checkbox state
+        localStorage.setItem('isInterestServed', isInterestServed); // Save state to localStorage
+    
+        // Get current input values
+        const principal = parseFloat(loanAmountInput.value); // Loan amount in rupees
+        const rate = parseFloat(interestRateInput.value); // Annual interest rate
+        const tenureYears = parseFloat(loanTenureInput.value); // Loan tenure in years
+        const tenureMonths = tenureYears * 12;
+        const moratoriumMonths = parseFloat(moratoriumInput.value); // Moratorium in months
+        const netMonthlyIncome = parseFloat(netMonthlyIncomeInput.value); // Net monthly income
+        const existingEmi = parseFloat(existingEmiInput.value); // Existing EMI
+    
+        // Recalculate Max Loan Eligibility
+        const maxEmiCapacity = calculateMaxEMICapacity(netMonthlyIncome, existingEmi, calculateNMIEMIRatio(netMonthlyIncome));
+        const maxLoanEligibility = calculateMaxLoanEligibility(
+            maxEmiCapacity,
+            rate,
+            tenureMonths,
+            moratoriumMonths,
+            isInterestServed,
+            principal
+        );
+    
+        // Update Max Loan Eligibility display
+        maxLoanEligibilityDisplay.textContent = `₹${maxLoanEligibility.toFixed(2)}`;
+    
+        // Recalculate EMI and other metrics
+        calculateEmiButton.click();
+    });
 
     calculateEmiButton.addEventListener('click', function () {
         const principal = parseFloat(loanAmountInput.value); // Loan amount in rupees
         const rate = parseFloat(interestRateInput.value); // Annual interest rate
         const tenureYears = parseFloat(loanTenureInput.value); // Loan tenure in years
         const moratoriumMonths = parseFloat(moratoriumInput.value); // Moratorium in months
-        const interestServedMoratorium = interestServedMoratoriumInput.value; // Interest served during moratorium (yes/no)
         const netMonthlyIncome = parseFloat(netMonthlyIncomeInput.value); // Net monthly income
         const existingEmi = parseFloat(existingEmiInput.value); // Existing EMI
-    
+
         // Validate inputs
         if (isNaN(principal) || isNaN(rate) || isNaN(tenureYears) || isNaN(moratoriumMonths) || isNaN(netMonthlyIncome) || isNaN(existingEmi)) {
             alert('Please enter valid values for all fields.');
             return;
         }
-    
+
         // Convert tenure from years to months
         const tenureMonths = tenureYears * 12;
-    
+
         // Calculate EMI (with moratorium and interest served option)
-        const { emi, numberOfPayments } = calculateEMI(principal, rate, tenureMonths, moratoriumMonths, interestServedMoratorium);
+        const { emi, numberOfPayments } = calculateEMI(principal, rate, tenureMonths, moratoriumMonths, isInterestServed);
         currentEMI = emi;
         originalNumberOfPayments = numberOfPayments;
-    
+        
+
         // Update EMI slider
         emiSlider.min = currentEMI.toFixed(2);
-        emiSlider.max = (currentEMI * 2).toFixed(2);
+        emiSlider.max = (currentEMI * 3).toFixed(2);
         emiSlider.value = currentEMI.toFixed(2);
-    
+
         // Display EMI
         newEmiDisplay.textContent = `₹${currentEMI.toFixed(2)}`;
         emiSavedDisplay.textContent = '₹0.00';
         newTenureDisplay.textContent = '0 months';
-    
+
         // Calculate additional metrics
         const nmiEmiRatio = calculateNMIEMIRatio(netMonthlyIncome);
         const maxEmiCapacity = calculateMaxEMICapacity(netMonthlyIncome, existingEmi, nmiEmiRatio);
-        const maxPermissibleFinance = calculateMaxPermissibleFinance(maxEmiCapacity, rate, tenureMonths);
-        const emiDuringMoratorium = calculateEMIDuringMoratorium(principal, rate, moratoriumMonths);
         const emiPostMoratorium = calculateEMIPostMoratorium(principal, rate, tenureMonths, moratoriumMonths);
-        const emiPostMoratoriumNoInterest = calculateEMIPostMoratoriumNoInterest(principal, rate, tenureMonths, moratoriumMonths);
-        const emiNoMoratorium = calculateEMINoMoratorium(principal, rate, tenureMonths);
-    
+        const maxLoanEligibility = calculateMaxLoanEligibility(
+            maxEmiCapacity,
+            rate,
+            tenureMonths,
+            moratoriumMonths,
+            isInterestServed,
+            principal
+        );
+
+        // Calculate EMI during Moratorium
+        const monthlyRate = rate / 12 / 100;
+        let emiDuringMoratorium = isInterestServed ? principal * monthlyRate : 0;
+        let emiLabel = 'EMI'; // Default label
+
+        if (moratoriumMonths > 0) {
+            emiLabel = 'EMI during Moratorium'; // Update label if moratorium exists
+        } else {
+            emiDuringMoratorium = emi; // Use regular EMI if no moratorium
+        }
+        // Update the EMI label and value
+        document.getElementById('emi-label').textContent = emiLabel;
+        emiMoratoriumDisplay.textContent = `₹${emiDuringMoratorium.toFixed(2)}`;
+
         // Display additional metrics
         nmiEmiRatioDisplay.textContent = `${nmiEmiRatio.toFixed(2)}%`;
         maxEmiCapacityDisplay.textContent = `₹${maxEmiCapacity.toFixed(2)}`;
-        maxPermissibleFinanceDisplay.textContent = `₹${maxPermissibleFinance.toFixed(2)}`;
-        emiDuringMoratoriumDisplay.textContent = `₹${emiDuringMoratorium.toFixed(2)}`;
         emiPostMoratoriumDisplay.textContent = `₹${emiPostMoratorium.toFixed(2)}`;
-        emiPostMoratoriumNoInterestDisplay.textContent = `₹${emiPostMoratoriumNoInterest.toFixed(2)}`;
-        emiNoMoratoriumDisplay.textContent = `₹${emiNoMoratorium.toFixed(2)}`;
+        emiMoratoriumDisplay.textContent = `₹${emiDuringMoratorium.toFixed(2)}`; // Updated to show EMI during Moratorium
+        maxLoanEligibilityDisplay.textContent = `₹${maxLoanEligibility.toFixed(2)}`;
+        adjustedEmiCapacityDisplay.value = maxEmiCapacity.toFixed(2);
 
         // Update progress bar for NMI/EMI Ratio
         progressBar.style.width = `${nmiEmiRatio}%`;
@@ -106,19 +166,53 @@ function initEMICalculator() {
                 value.style.color = '#2ecc71'; // Green for within limit
             }
         });
+
+        // Show/Hide EMI Post Moratorium card based on moratorium
+        if (moratoriumMonths > 0) {
+            emiPostMoratoriumCard.style.display = 'block';
+            interestServedToggle.style.display = 'block'; // Show the toggle switch
+        } else {
+            emiPostMoratoriumCard.style.display = 'none';
+            interestServedToggle.style.display = 'none'; // Hide the toggle switch
+        }
     
         // Update loan chart (with moratorium and interest served option)
-        updateLoanChart(principal, rate, tenureMonths, currentEMI, moratoriumMonths, interestServedMoratorium);
+        updateLoanChart(principal, rate, tenureMonths, currentEMI, moratoriumMonths, isInterestServed);
         updateChart('emi', { newEmi: currentEMI, interestSaved: 0, emisSaved: 0 });
 
         // Generate and display the amortization table
-        generateAmortizationTable(principal, rate, tenureMonths, currentEMI, moratoriumMonths, interestServedMoratorium);
+        try {
+            validateEMI(principal, rate, emi, moratoriumMonths, isInterestServed);
+            generateAmortizationTable(principal, rate, tenureMonths, currentEMI, moratoriumMonths, isInterestServed);
+        } catch (error) {
+            alert(error.message);
+        }
     });
-
-    // Add an event listener to the dropdown
-    interestServedMoratoriumInput.addEventListener('change', function () {
-        // Trigger the EMI calculation when the dropdown value changes
-        calculateEmiButton.click();
+    
+    recalculateFinanceButton.addEventListener('click', function () {
+        const adjustedEmiCapacity = parseFloat(document.getElementById('adjusted-emi-capacity').value);
+        const rate = parseFloat(interestRateInput.value); // ROI in %
+        const tenureYears = parseFloat(loanTenureInput.value); // Tenure in years
+        const tenureMonths = tenureYears * 12;
+        const moratoriumMonths = parseFloat(moratoriumInput.value); // Moratorium in months
+        const principal = parseFloat(loanAmountInput.value); // Loan amount
+    
+        if (isNaN(adjustedEmiCapacity) || adjustedEmiCapacity <= 0) {
+            alert('Please enter a valid EMI capacity.');
+            return;
+        }
+    
+        // Recalculate maximum loan amount with updated EMI capacity, moratorium, and interest served state
+        const adjustedMaxLoanEligibility = calculateMaxLoanEligibility(
+            adjustedEmiCapacity,
+            rate,
+            tenureMonths,
+            moratoriumMonths,
+            isInterestServed,
+            principal
+        );
+    
+        maxLoanEligibilityDisplay.textContent = `₹${adjustedMaxLoanEligibility.toFixed(2)}`;
     });
 
     let isSliderDragging = false;
@@ -142,34 +236,40 @@ function initEMICalculator() {
         }
     });
 
-    function calculateEMI(principal, rate, tenureMonths, moratoriumMonths = 0, interestServed = 'no') {
+    function calculateEMI(principal, rate, tenureMonths, moratoriumMonths = 0, isInterestServed = false) {
         const monthlyRate = rate / 12 / 100; // Monthly interest rate in decimal
     
-        // If there's a moratorium and interest is not served, calculate the accrued interest
-        if (moratoriumMonths > 0 && interestServed === 'no') {
-            const accruedInterest = principal * monthlyRate * moratoriumMonths;
-            principal += accruedInterest; // Add accrued interest to the principal
-            tenureMonths -= moratoriumMonths; // Reduce the tenure by the moratorium period
+        // If there's a moratorium and interest is not served, compound the interest
+        if (moratoriumMonths > 0 && !isInterestServed) {
+            for (let i = 0; i < moratoriumMonths; i++) {
+                const accruedInterest = principal * monthlyRate;
+                principal += accruedInterest; // Add accrued interest to the principal (compounding)
+            }
         }
+    
+        // Reduce the tenure by the moratorium period
+        const remainingTenure = tenureMonths - moratoriumMonths;
     
         // Calculate EMI for the remaining tenure
         const emi =
-            (principal * monthlyRate * Math.pow(1 + monthlyRate, tenureMonths)) /
-            (Math.pow(1 + monthlyRate, tenureMonths) - 1);
+            (principal * monthlyRate * Math.pow(1 + monthlyRate, remainingTenure)) /
+            (Math.pow(1 + monthlyRate, remainingTenure) - 1);
     
-        return { emi, numberOfPayments: tenureMonths };
+        return { emi, numberOfPayments: remainingTenure };
     }
 
-    function calculateAdjustedTenureAndInterest(principal, rate, emi, moratoriumMonths = 0, interestServed = 'no') {
+    function calculateAdjustedTenureAndInterest(principal, rate, emi, moratoriumMonths = 0, isInterestServed = false) {
         const monthlyRate = rate / 12 / 100;
-        let numberOfPayments = 0;
         let remainingPrincipal = principal;
+        let numberOfPayments = 0;
         let totalInterest = 0;
     
-        // If there's a moratorium and interest is not served, calculate the accrued interest
-        if (moratoriumMonths > 0 && interestServed === 'no') {
-            const accruedInterest = remainingPrincipal * monthlyRate * moratoriumMonths;
-            remainingPrincipal += accruedInterest; // Add accrued interest to the principal
+        // If there's a moratorium and interest is not served, compound the interest
+        if (moratoriumMonths > 0 && !isInterestServed) {
+            for (let i = 0; i < moratoriumMonths; i++) {
+                const accruedInterest = remainingPrincipal * monthlyRate;
+                remainingPrincipal += accruedInterest; // Compound the interest
+            }
         }
     
         // Calculate the number of payments required to repay the loan with the adjusted EMI
@@ -180,12 +280,31 @@ function initEMICalculator() {
             totalInterest += interest;
             numberOfPayments++;
     
+            // If EMI is too low to cover interest, throw an error
             if (principalPaid <= 0) {
                 throw new Error('EMI is too low to cover interest. Please increase EMI.');
             }
         }
     
         return { numberOfPayments, totalInterest };
+    }
+
+    function calculateMaxLoanEligibility(maxEmiCapacity, rate, tenureMonths, moratoriumMonths = 0, isInterestServed = false) {
+        const monthlyRate = rate / 12 / 100;
+    
+        // Calculate the remaining tenure after moratorium
+        const remainingTenure = tenureMonths - moratoriumMonths;
+    
+        // Calculate the maximum loan amount based on the borrower's EMI capacity
+        let maxLoanAmount = maxEmiCapacity * (1 - Math.pow(1 + monthlyRate, -remainingTenure)) / monthlyRate;
+    
+        // If interest is not served during moratorium, adjust the max loan amount for compounding
+        if (moratoriumMonths > 0 && !isInterestServed) {
+            // Compound the interest during the moratorium period
+            maxLoanAmount = maxLoanAmount / Math.pow(1 + monthlyRate, moratoriumMonths);
+        }
+    
+        return maxLoanAmount;
     }
 
     function calculateNMIEMIRatio(netMonthlyIncome) {
@@ -202,40 +321,21 @@ function initEMICalculator() {
         return (netMonthlyIncome * (nmiEmiRatio / 100)) - existingEmi;
     }
 
-    function calculateMaxPermissibleFinance(maxEmiCapacity, rate, tenureMonths) {
-        const monthlyRate = rate / 12 / 100;
-        return maxEmiCapacity * ((Math.pow(1 + monthlyRate, tenureMonths) - 1) / (monthlyRate * Math.pow(1 + monthlyRate, tenureMonths)));
-    }
-
-    function calculateEMIDuringMoratorium(principal, rate, moratoriumMonths = 0) {
-        // If there's no moratorium, return "NA"
-        if (moratoriumMonths === 0) {
-            return 0;
-        }
-    
-        const monthlyRate = rate / 12 / 100;
-        return principal * monthlyRate;
-    }
-
     function calculateEMIPostMoratorium(principal, rate, tenureMonths, moratoriumMonths) {
         const monthlyRate = rate / 12 / 100;
         const remainingTenure = tenureMonths - moratoriumMonths;
-        return (principal * monthlyRate * Math.pow(1 + monthlyRate, remainingTenure)) / (Math.pow(1 + monthlyRate, remainingTenure) - 1);
+    
+        if (isInterestServed) {
+            // If interest is served during moratorium, the principal remains the same
+            return (principal * monthlyRate * Math.pow(1 + monthlyRate, remainingTenure)) / (Math.pow(1 + monthlyRate, remainingTenure) - 1);
+        } else {
+            // If interest is not served, the principal increases by the accrued interest
+            const accruedInterest = principal * monthlyRate * moratoriumMonths;
+            return ((principal + accruedInterest) * monthlyRate * Math.pow(1 + monthlyRate, remainingTenure)) / (Math.pow(1 + monthlyRate, remainingTenure) - 1);
+        }
     }
 
-    function calculateEMIPostMoratoriumNoInterest(principal, rate, tenureMonths, moratoriumMonths) {
-        const monthlyRate = rate / 12 / 100;
-        const accruedInterest = principal * monthlyRate * moratoriumMonths;
-        const remainingTenure = tenureMonths - moratoriumMonths;
-        return ((principal + accruedInterest) * monthlyRate * Math.pow(1 + monthlyRate, remainingTenure)) / (Math.pow(1 + monthlyRate, remainingTenure) - 1);
-    }
-
-    function calculateEMINoMoratorium(principal, rate, tenureMonths) {
-        const monthlyRate = rate / 12 / 100;
-        return (principal * monthlyRate * Math.pow(1 + monthlyRate, tenureMonths)) / (Math.pow(1 + monthlyRate, tenureMonths) - 1);
-    }
-
-    function generateAmortizationTable(principal, rate, tenureMonths, emi, moratoriumMonths = 0, interestServed = 'no') {
+    function generateAmortizationTable(principal, rate, tenureMonths, emi, moratoriumMonths = 0, isInterestServed = false) {
         const monthlyRate = rate / 12 / 100;
         let remainingPrincipal = principal;
         const amortizationCardsContainer = document.getElementById('amortizationCards');
@@ -243,13 +343,16 @@ function initEMICalculator() {
     
         // Handle moratorium period
         if (moratoriumMonths > 0) {
+            let moratoriumDetails = '';
+            let totalInterestPaidDuringMoratorium = 0;
+    
             for (let i = 1; i <= moratoriumMonths; i++) {
                 const interest = remainingPrincipal * monthlyRate;
     
-                if (interestServed === 'yes') {
+                if (isInterestServed) {
                     // Borrower serves interest during moratorium
-                    amortizationCardsContainer.innerHTML += `
-                        <div class="amortization-card">
+                    moratoriumDetails += `
+                        <div class="monthly-card">
                             <div class="amortization-card-header">Month ${i} (Moratorium - Interest Paid)</div>
                             <div class="amortization-card-content">
                                 <span><strong>Principal Paid:</strong> ₹0.00</span>
@@ -258,11 +361,12 @@ function initEMICalculator() {
                             </div>
                         </div>
                     `;
+                    totalInterestPaidDuringMoratorium += interest;
                 } else {
                     // Borrower does not serve interest during moratorium
                     remainingPrincipal += interest; // Add interest to the principal
-                    amortizationCardsContainer.innerHTML += `
-                        <div class="amortization-card">
+                    moratoriumDetails += `
+                        <div class="monthly-card">
                             <div class="amortization-card-header">Month ${i} (Moratorium - Interest Accrued)</div>
                             <div class="amortization-card-content">
                                 <span><strong>Principal Paid:</strong> ₹0.00</span>
@@ -271,27 +375,52 @@ function initEMICalculator() {
                             </div>
                         </div>
                     `;
+                    totalInterestPaidDuringMoratorium += interest;
                 }
             }
+    
+            // Add a collapsible Moratorium Period row
+            amortizationCardsContainer.innerHTML += `
+                <div class="year-card">
+                    <div class="year-card-header collapsed" data-year="moratorium">
+                        <span>Moratorium Period</span>
+                        <span><strong>Principal:</strong> ₹0.00</span>
+                        <span><strong>Interest:</strong> ₹${totalInterestPaidDuringMoratorium.toFixed(2)}</span>
+                        <span><strong>Outstanding:</strong> ₹${remainingPrincipal.toFixed(2)}</span>
+                        <i class="material-icons">expand_more</i>
+                    </div>
+                    <div class="year-card-content">
+                        ${moratoriumDetails}
+                    </div>
+                </div>
+            `;
         }
+    
+        // Calculate the remaining tenure after moratorium
+        const remainingTenure = tenureMonths - moratoriumMonths;
     
         // Handle repayment period (grouped by years)
         let year = 1;
         let yearStartMonth = 1;
         let yearEndMonth = 12;
     
-        while (yearStartMonth <= tenureMonths) {
+        while (yearStartMonth <= remainingTenure) {
             let totalPrincipalPaid = 0;
             let totalInterestPaid = 0;
             let monthlyDetails = '';
     
-            for (let i = yearStartMonth; i <= Math.min(yearEndMonth, tenureMonths); i++) {
+            for (let i = yearStartMonth; i <= Math.min(yearEndMonth, remainingTenure); i++) {
                 const interest = remainingPrincipal * monthlyRate;
                 let principalPaid = emi - interest;
     
-                // Adjust the final EMI to ensure the Outstanding Balance does not go negative
-                if (remainingPrincipal - principalPaid < 0) {
+                // Ensure principal paid does not exceed the remaining principal
+                if (principalPaid > remainingPrincipal) {
                     principalPaid = remainingPrincipal; // Adjust principal paid to close the loan
+                }
+    
+                // Ensure principal paid is not negative
+                if (principalPaid < 0) {
+                    principalPaid = 0; // Prevent negative principal payments
                 }
     
                 remainingPrincipal -= principalPaid;
@@ -350,12 +479,32 @@ function initEMICalculator() {
         });
     }
 
+    function validateEMI(principal, rate, emi, moratoriumMonths, isInterestServed) {
+        const monthlyRate = rate / 12 / 100;
+        let adjustedPrincipal = principal;
+    
+        // If interest is not served during moratorium, compound the interest
+        if (moratoriumMonths > 0 && !isInterestServed) {
+            for (let i = 0; i < moratoriumMonths; i++) {
+                const accruedInterest = adjustedPrincipal * monthlyRate;
+                adjustedPrincipal += accruedInterest; // Compound the interest
+            }
+        }
+    
+        // Check if EMI is sufficient to cover interest on the adjusted principal
+        const minimumEMI = adjustedPrincipal * monthlyRate;
+        if (emi < minimumEMI) {
+            throw new Error(`EMI cannot be less than ₹${minimumEMI.toFixed(2)} (minimum EMI to cover interest).`);
+        }
+    
+        return true;
+    }
+
     function updateAmortizationSchedule() {
         const principal = parseFloat(loanAmountInput.value);
         const rate = parseFloat(interestRateInput.value);
         const emi = parseFloat(emiSlider.value);
         const moratoriumMonths = parseFloat(moratoriumInput.value);
-        const interestServedMoratorium = interestServedMoratoriumInput.value;
     
         if (isNaN(principal)) {
             alert('Please calculate EMI first.');
@@ -377,7 +526,7 @@ function initEMICalculator() {
                 rate,
                 emi,
                 moratoriumMonths,
-                interestServedMoratorium
+                isInterestServed // Use the isInterestServed variable instead of interestServedMoratorium
             );
     
             const originalEmi = currentEMI;
@@ -389,20 +538,26 @@ function initEMICalculator() {
             newTenureDisplay.textContent = `${emisSaved} months`;
     
             // Update the loan chart
-            updateLoanChart(principal, rate, numberOfPayments, emi, moratoriumMonths, interestServedMoratorium);
+            updateLoanChart(principal, rate, numberOfPayments, emi, moratoriumMonths, isInterestServed); // Use isInterestServed here
     
             // Update the chart with the new EMI, interest saved, and EMIs saved
             updateChart('emi', { newEmi: emi, interestSaved, emisSaved });
     
             // Generate the amortization table
-            generateAmortizationTable(principal, rate, numberOfPayments, emi, moratoriumMonths, interestServedMoratorium);
+            try {
+                validateEMI(principal, rate, emi, moratoriumMonths, isInterestServed);
+                generateAmortizationTable(principal, rate, numberOfPayments, emi, moratoriumMonths, isInterestServed);
+            } catch (error) {
+                alert(error.message);
+                emiSlider.value = currentEMI.toFixed(2);
+            }
         } catch (error) {
             alert(error.message);
             emiSlider.value = currentEMI.toFixed(2);
         }
     }
 
-    function updateLoanChart(principal, rate, tenureMonths, emi, moratoriumMonths = 0, interestServed = 'no') {
+    function updateLoanChart(principal, rate, tenureMonths, emi, moratoriumMonths = 0, isInterestServed = false) {
         const monthlyRate = rate / 12 / 100;
         let remainingPrincipal = principal;
         let labels = [];
@@ -415,7 +570,7 @@ function initEMICalculator() {
             for (let i = 1; i <= moratoriumMonths; i++) {
                 const interest = remainingPrincipal * monthlyRate;
     
-                if (interestServed === 'yes') {
+                if (isInterestServed) {
                     // Borrower serves interest during moratorium
                     labels.push(`Month ${i} (Moratorium - Interest Paid)`);
                     principalData.push(0); // No principal paid during moratorium
@@ -436,7 +591,7 @@ function initEMICalculator() {
         for (let i = 1; i <= tenureMonths; i++) {
             const interest = remainingPrincipal * monthlyRate;
             let principalPaid = emi - interest;
-        
+    
             // Adjust the final EMI to ensure the Outstanding Balance does not go negative
             if (remainingPrincipal - principalPaid < 0) {
                 principalPaid = remainingPrincipal; // Adjust principal paid to close the loan
@@ -450,7 +605,7 @@ function initEMICalculator() {
         }
     
         // Destroy the existing chart instance if it exists
-        if (loanChart) {
+        if (loanChart && typeof loanChart.destroy === 'function') {
             loanChart.destroy();
         }
     

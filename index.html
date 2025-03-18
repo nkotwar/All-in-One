@@ -128,7 +128,7 @@
         <!-- EMI Calculator Section -->
         <div id="emi-calculator" class="content">
             <h2>Loan EMI Calculator</h2>
-        
+
             <!-- First two divs (input fields and chart) -->
             <div class="emi-calculator-content">
                 <!-- Input fields section -->
@@ -150,13 +150,6 @@
                         <input type="number" id="moratorium" placeholder="e.g., 18" value="0">
                     </div>
                     <div class="input-group">
-                        <label>Interest Served During Moratorium:</label>
-                        <select id="interest-served-moratorium">
-                            <option value="yes">Yes</option>
-                            <option value="no">No</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
                         <label>Net Monthly Income (₹):</label>
                         <input type="number" id="net-monthly-income" placeholder="e.g., 56000" value="100000">
                     </div>
@@ -165,7 +158,7 @@
                         <input type="number" id="existing-emi" placeholder="e.g., 4000" value="0">
                     </div>
                     <button id="calculate-emi">Calculate EMI</button>
-        
+
                     <!-- EMI Slider -->
                     <div class="input-group">
                         <label>Adjust EMI (₹):</label>
@@ -177,7 +170,7 @@
                         <p>EMI Saved: <span id="new-tenure">0 months</span></p>
                     </div>
                 </div>
-        
+
                 <!-- Chart section -->
                 <div class="result-container chart-section">
                     <div class="summary-chart">
@@ -189,11 +182,35 @@
                     </div>
                 </div>
             </div>
-        
+
             <!-- Results section -->
             <div class="result-container results-section">
                 <h3>Results</h3>
                 <div class="result-grid">
+                    <!-- QoF Calculation -->
+                    <div class="result-card">
+                        <div class="result-header">
+                            <i class="material-icons">currency_rupee</i>
+                            <span>Max Loan Eligibility</span>
+                        </div>
+                        <div class="result-value" id="max-loan-eligibility">₹0.00</div>
+                        <!-- Input and Button for Adjusted EMI Capacity -->
+                        <div class="adjustment-container">
+                            <label for="adjusted-emi-capacity">Adjust Max EMI Capacity:</label>
+                            <input
+                                type="number"
+                                id="adjusted-emi-capacity"
+                                class="emi-input"
+                                value="0"
+                                step="100"
+                                placeholder="Enter adjusted EMI capacity"
+                            />
+                            <button id="recalculate-finance" class="recalculate-btn">
+                                Recalculate Quantum of Finance
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Permissible NMI/EMI Ratio -->
                     <div class="result-card">
                         <div class="result-header">
@@ -205,7 +222,7 @@
                             <div class="progress" style="width: 0%;"></div>
                         </div>
                     </div>
-        
+
                     <!-- Max EMI Capacity -->
                     <div class="result-card">
                         <div class="result-header">
@@ -214,52 +231,37 @@
                         </div>
                         <div class="result-value" id="max-emi-capacity">₹0.00</div>
                     </div>
-        
-                    <!-- Max Permissible Finance -->
-                    <div class="result-card">
+
+                    <!-- EMI Card -->
+                    <div class="result-card" id="emi-card">
                         <div class="result-header">
-                            <i class="material-icons">savings</i>
-                            <span>Max Permissible Finance</span>
+                            <i class="material-icons">trending_up</i>
+                            <span id="emi-label">EMI</span> <!-- Dynamic label -->
                         </div>
-                        <div class="result-value" id="max-permissible-finance">₹0.00</div>
+                        <div class="result-value" id="emi-moratorium">₹0.00</div>
                     </div>
-        
-                    <!-- EMI During Moratorium -->
-                    <div class="result-card">
-                        <div class="result-header">
-                            <i class="material-icons">pause_circle</i>
-                            <span>EMI During Moratorium</span>
-                        </div>
-                        <div class="result-value" id="emi-during-moratorium">₹0.00</div>
-                    </div>
-        
-                    <!-- EMI Post Moratorium -->
-                    <div class="result-card">
+
+                    <!-- EMI Post Moratorium Card (only shown if moratorium > 0) -->
+                    <div class="result-card" id="emi-post-moratorium-card" style="display: none;">
                         <div class="result-header">
                             <i class="material-icons">play_circle</i>
                             <span>EMI Post Moratorium</span>
                         </div>
                         <div class="result-value" id="emi-post-moratorium">₹0.00</div>
-                    </div>
-        
-                    <!-- EMI Post Moratorium (Interest Not Served) -->
-                    <div class="result-card">
-                        <div class="result-header">
-                            <i class="material-icons">warning</i>
-                            <span>EMI Post Moratorium (Interest Not Served)</span>
+                        <!-- Toggle for Interest Served (only shown if moratorium > 0) -->
+                        <div id="interest-served-toggle" style="display: none;">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="toggle-interest-served">
+                                <span class="slider">
+                                    <span class="slider-text slider-yes">Yes</span>
+                                    <span class="slider-text slider-no">No</span>
+                                </span>
+                            </label>
+                            <span>Interest Served</span>
                         </div>
-                        <div class="result-value" id="emi-post-moratorium-no-interest">₹0.00</div>
-                    </div>
-        
-                    <!-- EMI (No Moratorium) -->
-                    <div class="result-card">
-                        <div class="result-header">
-                            <i class="material-icons">trending_up</i>
-                            <span>EMI (No Moratorium)</span>
-                        </div>
-                        <div class="result-value" id="emi-no-moratorium">₹0.00</div>
                     </div>
 
+                    <!-- Early Repayment Summary -->
                     <div class="result-card">
                         <div class="result-header">
                             <i class="material-icons">paid</i>

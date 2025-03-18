@@ -687,6 +687,42 @@ iframe {
     box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
 }
 
+.adjustment-container {
+    margin-top: 10px;
+    text-align: left;
+}
+
+.adjustment-container label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 14px;
+    color: #333;
+}
+
+.emi-input {
+    padding: 8px;
+    margin-bottom: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.recalculate-btn {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.recalculate-btn:hover {
+    background-color: #45a049;
+}
+
 button#calculate {
     width: 100%;
     padding: 10px;
@@ -1963,4 +1999,74 @@ button#calculate-apy:hover {
     z-index: 1001;
     box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
     transition: background 0.3s;
+}
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 80px; /* Adjust width to fit "Yes" and "No" labels */
+    height: 30px;
+    margin-right: 10px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+}
+
+.slider-text {
+    font-size: 14px;
+    font-weight: bold;
+    color: white;
+    transition: 0.4s;
+}
+
+.slider-yes {
+    opacity: 0; /* Hide "Yes" by default */
+}
+
+.slider-no {
+    opacity: 1; /* Show "No" by default */
+}
+input:checked + .slider {
+    background-color: #2196F3; /* Blue background when checked */
+}
+
+input:checked + .slider .slider-yes {
+    opacity: 1; /* Show "Yes" when checked */
+}
+
+input:checked + .slider .slider-no {
+    opacity: 0; /* Hide "No" when checked */
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 24px;
+    width: 24px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider:before {
+    transform: translateX(50px); /* Move the slider to the right */
 }
