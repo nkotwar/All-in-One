@@ -97,15 +97,6 @@ html {
     width: 100%;
 }
 
-.search-icon {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #888;
-    pointer-events: none;
-}
-
 #searchInput {
     width: 100%;
     padding: 10px 40px 10px 10px;
@@ -2070,3 +2061,259 @@ input:checked + .slider .slider-no {
 input:checked + .slider:before {
     transform: translateX(50px); /* Move the slider to the right */
 }
+
+
+
+/* styles.css */
+
+/* Add the dropdown styles from the CodePen example */
+ 
+  @layer properties {
+    @property --max-height {
+      syntax:'<number>';
+      inherits: true;
+      initial-value: 0;
+    }
+     @property --bg-x {
+      syntax:'<number>';
+      inherits: true;
+      initial-value: 50;
+    }
+     @property --bg-y {
+      syntax:'<number>';
+      inherits: true;
+      initial-value: -200;
+    }
+    @property --scale {
+      syntax:'<number>';
+      inherits: true;
+      initial-value: 1;
+    }
+    @property --accent-color-hue {
+      syntax:'<number>';
+      inherits: true;
+      initial-value: 0;
+    }
+    @property --accent-color-hue {
+      syntax:'<number>';
+      inherits: true;
+      initial-value: 0;
+    }
+    @property --item-y {
+      syntax:'<number>';
+      inherits: true;
+      initial-value: 0;
+    }
+    @property --item-opacity {
+      syntax:'<number>';
+      inherits: true;
+      initial-value: 0;
+    }
+    @property --accent-color {
+      syntax:'<color>';
+      inherits: true;
+      initial-value: hsl(calc(var(--accent-color-hue)*1deg) 100% 58%);
+    }
+    @property --radial-bg-color {
+      syntax:'<color>';
+      inherits: true;
+      initial-value: black;
+    }
+  }
+  
+  :root {
+    --background-color: hsl(222deg 17% 14%);
+    --dark-color: hsl(227deg 37% 3%);
+    --light-color: hsl(211deg 23% 51%);
+    --accent-color-hue: 219;
+    --accent-color: hsl(calc(var(--accent-color-hue)*1deg) 100% 58%);
+    --radial-bg-color: var(--dark-color);
+    --max-height: 0;
+    --bg-y: -50;
+    --bg-x: 200;
+    --item-y: 20;
+    --item-opacity: 0;
+    
+    /* Misc */
+    --_inner-radius: 10;
+    --_inner-padding: 6;
+    --inner-radius: calc(var(--_inner-radius) * 1px);
+    --inner-padding: calc(var(--_inner-padding) * 1px);
+    --outer-radius: calc(calc(var(--_inner-radius) + var(--_inner-padding)) * 1px);
+    --debug: 0;
+    --a11y: 0;
+    --outline-color: hsla(calc(var(--accent-color-hue)*1deg) 100% 58% / calc(var(--a11y)*100%));
+  }
+  
+  *,*:before,*:after {
+    box-sizing: border-box;
+    outline: calc(var(--debug)*1px) dotted red;
+    outline-offset: -1px;
+  }
+  
+  
+  main {
+    max-width: 800px;
+    margin: 16em auto;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+    grid-gap: 32px;
+    place-items: center;
+    align-items: start;
+  }
+  
+  @media (min-width: 760px) {
+    main {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  
+  header {
+    color: white;
+    
+    & h3 {
+      letter-spacing: .15em;
+    }
+  }
+  
+ /* Dropdown container */
+ div.select {
+    position: relative;
+    background: var(--dark-color) radial-gradient(
+      ellipse 70% 70% at calc(var(--bg-x) * 1%) calc(var(--bg-y) * 1%),
+      var(--radial-bg-color) 0%,
+      var(--dark-color) 100%
+    );
+    border-radius: 8px;
+    padding: 8px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    --bg-x: 50; /* Initial background position */
+    --bg-y: -200; /* Initial background position */
+    --radial-bg-color: var(--dark-color); /* Initial background color */
+  }
+  
+  /* Dropdown button */
+  div.select > button {
+    width: 100%;
+    padding: 8px;
+    background: #34495e;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    text-align: left;
+    position: relative;
+  }
+  
+/* Dropdown button arrow */
+div.select > button::after {
+    content: '';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid white;
+    transition: transform 0.3s ease;
+  }
+  
+  /* Dropdown options container */
+  div.select > div {
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: #2c3e50;
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+  }
+  
+  /* Dropdown options */
+  div.select > div > a {
+    display: block;
+    padding: 8px;
+    color: white;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+  
+  /* Hover effect for options */
+  div.select > div > a:hover {
+    background: #1e88e5;
+  }
+  
+/* Apply glow animation on hover */
+div.select:hover {
+    animation: glow 1.2s ease-in-out;
+  }
+
+  /* Show dropdown when the parent is hovered or focused */
+  div.select:hover > div,
+  div.select:focus-within > div {
+    max-height: 200px; /* Adjust based on content height */
+    opacity: 1;
+  }
+  
+ /* Rotate arrow when dropdown is open */
+div.select:hover > button::after,
+div.select:focus-within > button::after {
+  transform: translateY(-50%) rotate(180deg);
+}
+  
+  .select.nomotion {
+   transition: none !important;
+    animation: none !important;
+    &:before,
+    &:after,
+    *, *:before, *:after {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .select {
+      transition: none !important;
+      animation: none !important;
+      &:before,
+      &:after,
+      *, *:before, *:after {
+        transition: none !important;
+        animation: none !important;
+      }
+    }
+  }
+  
+/* Glow animation */
+@keyframes glow {
+    from {
+      --radial-bg-color: var(--accent-color);
+      --bg-x: 100;
+      --bg-y: 0;
+    }
+    50% {
+      --radial-bg-color: hsl(290deg 100% 58%);
+      --bg-x: 60;
+      --bg-y: 120;
+    }
+    to {
+      --radial-bg-color: var(--dark-color);
+      --bg-x: 60;
+      --bg-y: 120;
+    }
+  }
+  
+/* Pop-out animation */
+@keyframes popOut {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }

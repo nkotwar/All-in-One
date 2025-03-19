@@ -253,6 +253,45 @@ async function loadPdfFields() {
         formContainer.appendChild(input);
     };
 
+    // Add dropdown for Beneficiary Account (only if it doesn't already exist)
+    if (uniqueFields.has("Beneficiary Account Name") && !document.getElementById('beneficiaryDropdown')) {
+        const beneficiaryDropdown = document.createElement('div');
+        beneficiaryDropdown.className = 'select';
+        beneficiaryDropdown.tabIndex = 0;
+        beneficiaryDropdown.setAttribute('role', 'button');
+        beneficiaryDropdown.id = 'beneficiaryDropdown';
+
+        const button = document.createElement('button');
+        button.tabIndex = 0;
+        button.textContent = 'Select Beneficiary Account';
+        beneficiaryDropdown.appendChild(button);
+
+        const optionsContainer = document.createElement('div');
+        Object.keys(accountDetails).forEach(account => {
+            const option = document.createElement('a');
+            option.setAttribute('role', 'button');
+            option.tabIndex = 0;
+            option.href = '#';
+            option.innerHTML = `<span>${account}</span>`;
+            option.addEventListener('click', (e) => {
+                e.preventDefault();
+                button.textContent = account;
+                const details = accountDetails[account];
+                Object.keys(details).forEach(field => {
+                    const input = formContainer.querySelector(`input[name="${field}"]`);
+                    if (input) {
+                        input.value = details[field];
+                        formFields[field] = details[field];
+                        localStorage.setItem(`formField_${field}`, details[field]);
+                    }
+                });
+            });
+            optionsContainer.appendChild(option);
+        });
+        beneficiaryDropdown.appendChild(optionsContainer);
+        formContainer.appendChild(beneficiaryDropdown);
+    }
+
     // Add fields in the defined order, regardless of whether they exist in the PDFs
     fieldOrder.forEach(fieldName => {
         if (uniqueFields.has(fieldName)) {

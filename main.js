@@ -102,3 +102,83 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
 });
+
+document.addEventListener('DOMContentLoaded', () => {
+    const formContainer = document.getElementById('formContainer');
+  
+    // Create the dropdown
+    const beneficiaryDropdown = document.createElement('div');
+    beneficiaryDropdown.className = 'select';
+    beneficiaryDropdown.tabIndex = 0;
+    beneficiaryDropdown.setAttribute('role', 'button');
+    beneficiaryDropdown.id = 'beneficiaryDropdown';
+  
+    const button = document.createElement('button');
+    button.tabIndex = 0;
+    button.textContent = 'Select Beneficiary Account';
+    beneficiaryDropdown.appendChild(button);
+  
+    const optionsContainer = document.createElement('div');
+    Object.keys(accountDetails).forEach(account => {
+      const option = document.createElement('a');
+      option.setAttribute('role', 'button');
+      option.tabIndex = 0;
+      option.href = '#';
+      option.innerHTML = `<span>${account}</span>`;
+      option.addEventListener('click', (e) => {
+        e.preventDefault();
+        button.textContent = account;
+  
+        // Instantly close the dropdown
+        optionsContainer.style.display = 'none'; // Hide the dropdown
+  
+        // Add logic to auto-populate form fields
+        const details = accountDetails[account];
+        Object.keys(details).forEach(field => {
+          const input = formContainer.querySelector(`input[name="${field}"]`);
+          if (input) {
+            input.value = details[field];
+            formFields[field] = details[field];
+            localStorage.setItem(`formField_${field}`, details[field]);
+          }
+        });
+  
+        // Add "pop-out" animation to the button
+        button.style.animation = 'popOut 0.3s ease';
+        button.addEventListener('animationend', () => {
+          button.style.animation = '';
+        });
+      });
+      optionsContainer.appendChild(option);
+    });
+    beneficiaryDropdown.appendChild(optionsContainer);
+    formContainer.appendChild(beneficiaryDropdown);
+  
+    // Show dropdown on hover or focus
+    beneficiaryDropdown.addEventListener('mouseenter', () => {
+      optionsContainer.style.display = 'block';
+    });
+  
+    beneficiaryDropdown.addEventListener('mouseleave', () => {
+      optionsContainer.style.display = 'none';
+    });
+  
+    beneficiaryDropdown.addEventListener('focusin', () => {
+      optionsContainer.style.display = 'block';
+    });
+  
+    beneficiaryDropdown.addEventListener('focusout', () => {
+      optionsContainer.style.display = 'none';
+    });
+  });
+  
+  // Add the "popOut" animation
+  const styleSheet = document.createElement('style');
+  styleSheet.innerHTML = `
+    @keyframes popOut {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+  `;
+  document.head.appendChild(styleSheet);

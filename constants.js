@@ -74,10 +74,23 @@ const defaultFieldValues = {
     "Application Date": "",
     "Last Documentation Date": "",
     "Sales": "",
-    "Rating": ""
+    "Rating": "",
+    "Sender Account Name": "",
+    "Sender Account Number": "",
+    "Sender Mobile": "",
+    "Beneficiary Account Number": "",
+    "Beneficiary IFSC": "",
+    "Beneficiary Account Name": "",
+    "Beneficiary Bank": "",
+    "Beneficiary Branch": "",
+    "Fund TRF Purpose": "",
 };
 
 const presets = {
+    "NEFT/RTGS Approval - RO": [
+        "NEFT RTGS Approval Letter to RO",
+        "NEFT RTGS UTR CASH Letter to Other Bank",
+    ],
     "Operation": [
         "Form - Mobile Number Updation",
         "Form - Name Updation",
@@ -137,7 +150,7 @@ const fieldOrder = [
 
     // Account Details
     "CIF", "CC LOAN Ac No", "Account No", "Account Number", "Saving Ac No", "Saving A/c No", "Account Type", "Udyam", "Nominee A/c No", "Deceased A/c No",
-    "Receipt No", "Receipt Current Value", "UTR",
+    "Receipt No", "Receipt Current Value",
 
     // Address Details
     "Address", "Supplier Address", "Nominee Address", "Office Address", "Business Address", "Village", "Tehsil", "District", "Business Description", "Business Nature", "Annual Income",
@@ -160,10 +173,80 @@ const fieldOrder = [
     // Additional Banking & Security Information
     "Security ID", "Policy No", "Policy Valid From", "Policy Valid To",
 
+    // NEFT RTGS
+    "Sender Account Name",
+    "Sender Account Number",
+    "Sender Mobile",
+    "Beneficiary Account Number",
+    "Beneficiary IFSC",
+    "Beneficiary Account Name",
+    "Beneficiary Bank",
+    "Beneficiary Branch",
+    "Fund TRF Purpose",
+    "UTR",
+
     // Officers & Processing Details
-    "Processing Officer", "Sanctioning Officer", "INSPECTING OFFICIAL", "Branch Manager",
+    "Staff Name", "Staff PF", "Processing Officer", "Sanctioning Officer", "INSPECTING OFFICIAL", "Branch Manager",
 
     //Maker Checker
     "MAKER", "CHECKER Name", "CHECKER PF", "CHECKER Designation",
 
 ];
+
+const accountDetails = {
+    "<--Select-->": {
+        "Sender Account Name": "",
+        "Sender Account Number": "",
+        "Sender Mobile": "",
+        "Beneficiary Account Number": "",
+        "Beneficiary IFSC": "",
+        "Beneficiary Account Name": "",
+        "Beneficiary Bank": "",
+        "Beneficiary Branch": "",
+        "Fund TRF Purpose": "",
+    },
+    "BOB Mangalwar": {
+        "Sender Account Name": "SUNDRY DEBTORS",
+        "Sender Account Number": "50810028988",
+        "Sender Mobile": "8696930799",
+        "Beneficiary Account Number": "13270013201006",
+        "Beneficiary IFSC": "BARB0MANCHI",
+        "Beneficiary Account Name": "Sundry deposit rtgs OUTWARD",
+        "Beneficiary Bank": "Bank of Baroda",
+        "Beneficiary Branch": "Mangalwar",
+        "Fund TRF Purpose": "Cash Remittance"
+    },
+    "YES Bank Bhinder": {
+        "Sender Account Name": "SUNDRY DEBTORS",
+        "Sender Account Number": "50810028988",
+        "Sender Mobile": "8696930799",
+        "Beneficiary Account Number": "189800000104",
+        "Beneficiary IFSC": "YESB0000771",
+        "Beneficiary Account Name": "CENTRAL BANK OF INDIA",
+        "Beneficiary Bank": "Yes Bank",
+        "Beneficiary Branch": "Bhinder",
+        "Fund TRF Purpose": "Cash Remittance"
+    },
+    "AU Bank Bhinder": {
+        "Sender Account Name": "SUNDRY DEBTORS",
+        "Sender Account Number": "50810028988",
+        "Sender Mobile": "8696930799",
+        "Beneficiary Account Number": "2221203542441944",
+        "Beneficiary IFSC": "AUBL0002238",
+        "Beneficiary Account Name": "AUSBF ADHOC CASH ARRANGEMENT",
+        "Beneficiary Bank": "AU Small Finance Bank",
+        "Beneficiary Branch": "Bhinder",
+        "Fund TRF Purpose": "Cash Remittance"
+    },
+    "BHARAT IT Vendor Payment": {
+        "Sender Account Name": "Internal CD",
+        "Sender Account Number": "3652995843",
+        "Sender Mobile": "8696930799",
+        "Beneficiary Account Number": "9BITMC0054JAIPUR",
+        "Beneficiary IFSC": "DBSS0IN0811",
+        "Beneficiary Account Name": "BHARAT IT SERVICES LTD",
+        "Beneficiary Bank": "DBS BANK LTD",
+        "Beneficiary Branch": "Mumbai",
+        "Fund TRF Purpose": "Vendor Bill Payment"
+    }
+};
