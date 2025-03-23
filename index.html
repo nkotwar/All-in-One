@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>All-in-One Banking & Documentation</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="cropper.min.css" />
+    <link rel="stylesheet" href="all.min.css" />
+    <!-- <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"> -->
     <script src="CustomEase.min.js"></script>
     <script src="gsap.min.js"></script>
     <script src="chart.js" defer></script>
@@ -25,6 +27,8 @@
     <script src="main.js" defer></script>
     <script src="cbsData.js" defer></script>
     <script src="cbshierarchy.js" defer></script>
+    <script src="cropper.min.js"></script>
+    <script src="ckycsnap.js"></script>
 </head>
 <body>
     <div id="menu">
@@ -42,6 +46,7 @@
                 <li data-tab="emi-calculator"><i class="material-icons">calculate</i> EMI Calculator</li>
                 <li data-tab="wealth-simulator"><i class="material-icons">savings</i> Wealth Simulator</li>
                 <li data-tab="cbs-hierarchy"><i class="material-icons">account_tree</i> CBS Hierarchy</li>
+                <li data-tab="snap-container"><i class="material-icons">blur_on</i> F-10/CKYC Snap</li>
 			</ul>
 
             <!-- Signature Section -->
@@ -758,6 +763,198 @@
             </div>
             <div id="cbsResults" class="cbs-search-results"></div>
         </div>
+
+        <!-- snap-container -->
+        <div id="snap-container" class="snap-container content">
+            <h2>CKYC/F-10 Snapper</h2>
+            <div class="layout">
+                <!-- Left Column: Image Uploader -->
+                <div class="left-column">
+                  <div id="drop-area">
+                    <p>⬆️ Drag and drop an image here</p>
+                    <input
+                      type="file"
+                      id="file-input"
+                      accept="image/*"
+                      style="display: none"
+                    />
+                    <!-- Hide the file input -->
+                  </div>
+                  <div id="crop-container" style="display: none">
+                    <img id="image" src="" alt="Image to crop" />
+                  </div>
+                </div>
+        
+                <!-- Right Column: Image Manipulation Controls -->
+                <div class="right-column">
+                  <div id="controls" style="display: none">
+                    <label for="file-size"
+                      >Desired File Size (KB) [<span id="file-size-range"
+                        >0 KB - 0 KB</span
+                      >]:</label
+                    >
+                    <input
+                      type="number"
+                      id="file-size"
+                      min="1"
+                      max="10000"
+                      value="25"
+                    />
+                    <p id="file-size-error" style="color: red; display: none">
+                      Please enter a value within the calculated range.
+                    </p>
+                    <div id="button-container">
+                      <button
+                        id="auto-adjust-button"
+                        class="auto-adjust-button"
+                        title="Automatically adjust image settings to match the desired file size"
+                      >
+                        <span class="button-icon">🪄</span>
+                        <span class="button-text">Auto Adjust for Desired Size</span>
+                        <span class="loading-spinner" style="display: none">⏳</span>
+                      </button>
+                      <button id="download-preview-button" style="display: none">
+                        Download (0 KB)
+                      </button>
+                      <button
+                        id="stop-button"
+                        style="
+                          display: none;
+                          background-color: #dc3545;
+                          color: white;
+                          border: none;
+                          border-radius: 5px;
+                          padding: 10px;
+                          font-size: 16px;
+                          cursor: pointer;
+                        "
+                      >
+                        ⏹️ Stop
+                      </button>
+                    </div>
+                    <div id="visualization-container">
+                      <canvas id="annealing-canvas" width="400" height="160"></canvas>
+                      <img
+                        id="iteration-preview"
+                        src=""
+                        alt="Iteration Preview"
+                        style="display: none; max-height: 150px; max-width: 300px"
+                      />
+                    </div>
+                  </div>
+        
+                  <div id="sliders-container" style="display: none">
+                    <!-- Upscale Resolution -->
+                    <div class="slider-row">
+                      <div class="slider-label-row">
+                        <label for="upscale-slider">Super Res:</label>
+                        <span id="upscale-value">1x</span>
+                        <button
+                          id="lock-resolution"
+                          class="lock-button"
+                          title="Lock/Unlock Resolution"
+                        >
+                          🔒
+                        </button>
+                      </div>
+                      <input
+                        type="range"
+                        id="upscale-slider"
+                        min="1"
+                        max="5"
+                        step="0.1"
+                        value="1"
+                      />
+                    </div>
+        
+                    <!-- Noise -->
+                    <div class="slider-row">
+                      <div class="slider-label-row">
+                        <label for="noise-slider">Texture Synthesizer:</label>
+                        <span id="noise-value">0%</span>
+                        <button
+                          id="lock-noise"
+                          class="lock-button"
+                          title="Lock/Unlock Noise"
+                        >
+                          🔒
+                        </button>
+                      </div>
+                      <input
+                        type="range"
+                        id="noise-slider"
+                        min="0"
+                        max="100"
+                        value="0"
+                      />
+                    </div>
+        
+                    <!-- Quality -->
+                    <div class="slider-row">
+                      <div class="slider-label-row">
+                        <label for="quality-slider">Bitrate Compressor:</label>
+                        <span id="quality-value">100%</span>
+                        <button
+                          id="lock-quality"
+                          class="lock-button"
+                          title="Lock/Unlock Quality"
+                        >
+                          🔒
+                        </button>
+                      </div>
+                      <input
+                        type="range"
+                        id="quality-slider"
+                        min="0.01"
+                        max="1"
+                        step="0.01"
+                        value="1"
+                      />
+                    </div>
+        
+                    <!-- Blur -->
+                    <div class="slider-row">
+                      <div class="slider-label-row">
+                        <label for="blur-slider">Gaussian Operator:</label>
+                        <span id="blur-value">0px</span>
+                        <button
+                          id="lock-blur"
+                          class="lock-button"
+                          title="Lock/Unlock Blur"
+                        >
+                          🔒
+                        </button>
+                      </div>
+                      <input type="range" id="blur-slider" min="0" max="20" value="0" />
+                    </div>
+        
+                    <!-- Color Depth -->
+                    <div class="slider-row">
+                      <div class="slider-label-row">
+                        <label for="color-depth-slider">Pixel Spectrum:</label>
+                        <span id="color-depth-value">24-bit</span>
+                        <button
+                          id="lock-color-depth"
+                          class="lock-button"
+                          title="Lock/Unlock Color Depth"
+                        >
+                          🔒
+                        </button>
+                      </div>
+                      <input
+                        type="range"
+                        id="color-depth-slider"
+                        min="1"
+                        max="24"
+                        value="24"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+        </div>
+
+
     </div>
 </body>
 </html>

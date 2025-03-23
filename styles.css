@@ -1,3 +1,28 @@
+@font-face {
+    font-family: 'Material Icons';
+    font-style: normal;
+    font-weight: 400;
+    src: url('MaterialIcons-Regular.ttf') format('truetype');
+  }
+
+  .material-icons {
+    font-family: 'Material Icons';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px; /* Preferred icon size */
+    display: inline-block;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'liga';
+  }
+
 /* General Styles */
 body,
 html {
@@ -12,7 +37,7 @@ html {
 
 /* Sidebar Styles */
 .sidebar {
-    width: 250px;
+    width: 300px;
     background-color: #2c3e50;
     color: #fff;
     padding: 20px;
@@ -398,7 +423,7 @@ iframe {
 
     #pdfSidebar.active {
         right: 0;
-        width: 80%;
+        width: 300px;
     }
 
     .input-fields, .chart-container {
@@ -514,7 +539,7 @@ iframe {
     width: max-content;
     align-items: center;
     position: absolute;
-    left: -5%;
+    left: -10%;
     top: 0;
     background: #1e88e5;
     color: #fff;
@@ -539,8 +564,8 @@ iframe {
 #pdfSidebar {
     position: fixed;
     top: 0;
-    right: -250px;
-    width: 250px;
+    right: -300px;
+    width: 300px;
     height: 100vh;
     background-color: #f5f5f5;
     border-left: 1px solid #ddd;
@@ -1233,6 +1258,7 @@ canvas {
     transition: 1000ms all cubic-bezier(0.19, 1, 0.22, 1);
     transform: translateX(-100%);
     left: 60px;
+    z-index: 1;
 }
 
 #menu.expanded {
@@ -2317,3 +2343,389 @@ div.select:focus-within > button::after {
     50% { transform: scale(1.1); }
     100% { transform: scale(1); }
   }
+
+
+/* General Styles */
+body {
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    width: 100%;
+    background-color: #26394E;
+    justify-content: center;
+}
+
+.snap-container {
+  background: #e0e5ec; /* Light background for Neumorphism */
+  padding: 30px;
+  border-radius: 15px;
+  box-shadow: 20px 20px 60px #bebebe, -20px -20px 60px #ffffff; /* Neumorphism shadow */
+  width: 100%;
+  max-width: 90%;
+  align-items: center;
+  height: 100vh;
+}
+
+.snap-container h1 {
+  color: #333;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* Two-Column Layout */
+.layout {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+}
+
+.left-column {
+  flex: 1;
+  max-width: 30%;
+}
+
+.right-column {
+  flex: 2;
+  display: flex;
+  gap: 20px;
+}
+
+/* Drop Area */
+#drop-area {
+  border: 2px dashed #007bff;
+  padding: 40px;
+  text-align: center;
+  margin: 20px 0;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+  position: relative; /* Required for absolute positioning of the file input */
+}
+
+#drop-area:hover {
+  background-color: #e9f5ff;
+  border-color: #0056b3;
+}
+
+#drop-area p {
+  margin: 0;
+  color: #666;
+  font-size: 16px;
+}
+
+/* Visual feedback when dragging a file over the drop area */
+#drop-area.dragover {
+  background-color: #cce5ff; /* Light blue background */
+  border-color: #004085; /* Darker blue border */
+}
+
+/* File Input */
+#file-input {
+  position: absolute; /* Cover the entire drop area */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0; /* Make the file input invisible */
+  cursor: pointer; /* Show pointer cursor */
+}
+
+/* Crop Container */
+
+/* Custom styles for Cropper.js handles */
+.cropper-point {
+  width: 4px !important; /* Reduce handle size */
+  height: 4px !important; /* Reduce handle size */
+  background-color: #007bff; /* Change handle color */
+  opacity: 0.8; /* Make handles slightly transparent */
+}
+
+/* Adjust handle positions */
+.cropper-point.point-se {
+  bottom: -5px !important; /* Adjust bottom-right handle position */
+  right: -5px !important;
+}
+
+/* Hide unnecessary handles (optional) */
+.cropper-point.point-n,
+.cropper-point.point-e,
+.cropper-point.point-s,
+.cropper-point.point-w {
+  display: none; /* Hide top, right, bottom, and left handles */
+}
+
+#crop-container {
+  margin-top: 20px;
+  border-radius: 15px;
+  background: #e0e5ec; /* Light background for Neumorphism */
+  box-shadow: 10px 10px 20px #bebebe, -10px -10px 20px #ffffff; /* Neumorphism shadow */
+  overflow: hidden;
+}
+
+#crop-container img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+
+/* Controls */
+#controls, #sliders-container{
+  font-size: 0.8rem;
+  background: #e0e5ec; /* Light background for Neumorphism */
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 10px 10px 20px #bebebe, -10px -10px 20px #ffffff; /* Neumorphism shadow */
+  flex-direction: column;
+  align-items: center;
+  width: 50%;
+}
+
+#file-size{
+  padding: 10px;
+  margin: 10px 0;
+  width: 50%;
+}
+.slider-row button{
+    width: fit-content;
+}
+
+/* Sliders */
+#sliders-container {
+  display: none; /* Hidden by default */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+/* Slider Label Row */
+.slider-label-row {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* Space between elements */
+  margin-bottom: 5px; /* Space between label row and slider */
+}
+
+.slider-label-row label {
+  flex: 1; /* Allow the label to take up available space */
+  font-weight: 500;
+  color: #333;
+}
+
+.slider-label-row span {
+  min-width: 50px; /* Fixed width for the value display */
+  text-align: right;
+  font-weight: 500;
+  color: #333;
+}
+
+.slider-label-row button.lock-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 5px;
+  transition: transform 0.2s ease;
+}
+
+.slider-label-row button.lock-button:hover {
+  transform: scale(1.1); /* Slightly enlarge the lock icon on hover */
+}
+
+.slider-label-row button.lock-button.locked {
+  color: #dc3545; /* Red color for locked state */
+}
+
+.slider-label-row button.lock-button:not(.locked) {
+  color: #007bff; /* Blue color for unlocked state */
+}
+
+/* Slider Input */
+.slider-row input[type="range"] {
+  width: 100%; /* Full width for the slider */
+}
+
+.slider-row button.lock-button:hover {
+  transform: scale(1.1); /* Slightly enlarge the lock icon on hover */
+}
+
+.slider-row button.lock-button.locked {
+  color: #dc3545; /* Red color for locked state */
+}
+
+.slider-row button.lock-button:not(.locked) {
+  color: #007bff; /* Blue color for unlocked state */
+}
+
+/* Buttons */
+.snap-container button {
+  margin: 10px 0;
+  padding: 10px 20px;
+  background: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 5px 5px 10px #bebebe, -5px -5px 10px #ffffff; /* Neumorphism shadow */
+}
+
+.snap-container button:hover {
+  background: #0056b3;
+  box-shadow: inset 5px 5px 10px #bebebe, inset -5px -5px 10px #ffffff; /* Inset shadow on hover */
+}
+
+.lock-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 15px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-left: 10px;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 5px 5px 10px #bebebe, -5px -5px 10px #ffffff; /* Neumorphism shadow */
+}
+
+.lock-button.locked {
+  background-color: #dc3545;
+}
+
+.lock-button:hover {
+  background-color: #0056b3;
+  box-shadow: inset 5px 5px 10px #bebebe, inset -5px -5px 10px #ffffff; /* Inset shadow on hover */
+}
+
+.lock-button.locked:hover {
+  background-color: #c82333;
+}
+
+/* Inputs */
+.snap-container input[type="range"],
+.snap-container input[type="number"],
+.snap-container select {
+  width: 100%;
+  margin: 0 5px 0 5px;
+  border: none;
+  border-radius: 10px;
+  background: #e0e5ec; /* Light background for Neumorphism */
+  box-shadow: inset 5px 5px 10px #bebebe, inset -5px -5px 10px #ffffff; /* Inset shadow */
+  transition: box-shadow 0.3s ease;
+}
+
+.snap-container input[type="range"]:focus,
+.snap-container input[type="number"]:focus,
+.snap-container select:focus {
+  box-shadow: inset 5px 5px 10px #bebebe, inset -5px -5px 10px #ffffff; /* Inset shadow on focus */
+  outline: none;
+}
+
+.snap-container #button-container{
+  display: flex;
+}
+
+.snap-container #button-container button{
+  margin: 10px;
+  padding: 10px;
+}
+
+.loading-spinner {
+  font-size: 20px;
+  animation: spin 1s linear infinite; /* Apply the spin animation */
+  display: none; /* Hidden by default */
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Visualization Container */
+#visualization-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+#annealing-canvas {
+  border-radius: 10px;
+  background: #e0e5ec; /* Light background for Neumorphism */
+  box-shadow: 5px 5px 10px #bebebe, -5px -5px 10px #ffffff; /* Neumorphism shadow */
+}
+
+#iteration-preview {
+  border-radius: 10px;
+  box-shadow: 5px 5px 10px #bebebe, -5px -5px 10px #ffffff; /* Neumorphism shadow */
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  /* Adjust layout for smaller screens */
+  .slider-label-row {
+    flex-direction: column; /* Stack label, value, and lock icon vertically */
+    align-items: flex-start;
+    gap: 5px; /* Reduce space between elements */
+  }
+
+  .slider-label-row span {
+    text-align: left; /* Align value to the left */
+  }
+
+  .slider-row input[type="range"] {
+    width: 100%; /* Full width for the slider */
+  }
+  .right-column{
+    flex-direction: column;
+  }
+  #annealing-canvas{
+    width: 100%;
+  }
+  .layout{
+    flex-direction: column;
+  }
+  .left-column{
+    width: 100%;
+    max-width: 100%;
+  }
+  #crop-container {
+    max-height: 300px; /* Reduce height for smaller screens */
+  }
+}
+
+@media (max-width: 480px) {
+  /* Further adjustments for very small screens */
+  .slider-label-row label {
+    font-size: 14px; /* Reduce font size for labels */
+  }
+
+  .slider-label-row span {
+    font-size: 14px; /* Reduce font size for values */
+  }
+
+  .slider-label-row button.lock-button {
+    font-size: 14px; /* Reduce font size for lock icons */
+  }
+  .right-column{
+    flex-direction: column;
+  }
+  #annealing-canvas{
+    width: 100%;
+  }
+  .layout{
+    flex-direction: column;
+  }
+  .left-column{
+    width: 100%;
+    max-width: 100%;
+  }
+  #crop-container {
+    max-height: 200px; /* Reduce height for smaller screens */
+  }
+}

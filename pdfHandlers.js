@@ -254,7 +254,7 @@ async function loadPdfFields() {
     };
 
     // Add dropdown for Beneficiary Account (only if it doesn't already exist)
-    if (uniqueFields.has("Beneficiary Account Name") && !document.getElementById('beneficiaryDropdown')) {
+    if (uniqueFields.has("Beneficiary Account Number") && !document.getElementById('beneficiaryDropdown')) {
         const beneficiaryDropdown = document.createElement('div');
         beneficiaryDropdown.className = 'select';
         beneficiaryDropdown.tabIndex = 0;
