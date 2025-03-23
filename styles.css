@@ -33,6 +33,7 @@ html {
     width: 100%;
     background-color: #26394E;
     justify-content: center;
+    height: 100vh;
 }
 
 /* Sidebar Styles */
@@ -105,6 +106,7 @@ html {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     background: #fff;
     text-align: center;
+    height: fit-content;
 }
 
 .content {
@@ -2697,6 +2699,12 @@ body {
   #crop-container {
     max-height: 300px; /* Reduce height for smaller screens */
   }
+  .snap-container{
+    height: 100%;
+  }
+  #controls, #sliders-container{
+    width: 100%;
+  }
 }
 
 @media (max-width: 480px) {
@@ -2727,5 +2735,11 @@ body {
   }
   #crop-container {
     max-height: 200px; /* Reduce height for smaller screens */
+  }
+  .snap-container{
+    height: 100%;
+  }
+  #controls, #sliders-container{
+    width: 100%;
   }
 }
