@@ -1,0 +1,114 @@
+@media (max-width: 768px) {
+    .container {
+        margin-left: 0;
+        padding: 10px;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    #menu {
+        left: 0;
+        width: 100%;
+    }
+
+    #menu.expanded {
+        left: 0;
+        width: 80%;
+    }
+
+    .hamburger {
+        right: 10px;
+    }
+
+    .search-results {
+        max-height: 150px;
+    }
+
+    #selectedPdfsList {
+        flex-direction: column;
+    }
+
+    #formContainer {
+        padding: 10px;
+    }
+
+    .emi-calculator-content {
+        flex-direction: column;
+    }
+
+    .input-fields, .chart-section {
+        width: 100%;
+    }
+
+    .result-item {
+        flex-direction: column;
+    }
+
+    .calculator-tabs {
+        flex-direction: column;
+    }
+
+    .calculator-content {
+        padding: 10px;
+    }
+
+    .input-panel {
+        flex-direction: column;
+    }
+
+    .cbs-search-container {
+        padding: 10px;
+    }
+
+    .cbs-collapsible {
+        font-size: 14px;
+    }
+
+    .cbs-content {
+        padding-left: 10px;
+    }
+
+    .toast-container {
+        bottom: 10px;
+        right: 10px;
+    }
+
+    .toast {
+        font-size: 14px;
+        padding: 8px 16px;
+    }
+
+    iframe {
+        height: 300px;
+    }
+
+    .signature {
+        font-size: 12px;
+    }
+
+    .signature-name {
+        font-size: 14px;
+    }
+
+    .signature-details {
+        font-size: 10px;
+    }
+
+    .year-card-header {
+        display: block;
+        text-align: left;
+    }
+
+    #apy-contribution-breakdown-chart {
+        width: 250px;
+        height: 250px;
+    }
+
+    #age-picker-container {
+        height: auto;
+    }
+
+    .hamburger-toggle {
+        display: block;
+    }
+}

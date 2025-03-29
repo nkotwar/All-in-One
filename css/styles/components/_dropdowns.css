@@ -1,0 +1,101 @@
+/* Dropdown menus */
+.select {
+    position: relative;
+    background: var(--secondary-color) radial-gradient(
+        ellipse 70% 70% at calc(var(--bg-x) * 1%) calc(var(--bg-y) * 1%),
+        var(--radial-bg-color) 0%,
+        var(--secondary-color) 100%
+    );
+    border-radius: 8px;
+    padding: 8px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    --bg-x: 50;
+    --bg-y: -200;
+    --radial-bg-color: var(--secondary-color);
+}
+
+.select > button {
+    width: 100%;
+    padding: 8px;
+    background: var(--secondary-dark);
+    border: none;
+    border-radius: 4px;
+    color: var(--text-light);
+    cursor: pointer;
+    text-align: left;
+    position: relative;
+}
+
+.select > button::after {
+    content: '';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid var(--text-light);
+    transition: transform 0.3s ease;
+}
+
+.select > div {
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: var(--secondary-color);
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+}
+
+.select > div > a {
+    display: block;
+    padding: 8px;
+    color: var(--text-light);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.select > div > a:hover {
+    background: var(--primary-color);
+}
+
+.select:hover {
+    animation: glow 1.2s ease-in-out;
+}
+
+.select:hover > div,
+.select:focus-within > div {
+    max-height: 200px;
+    opacity: 1;
+}
+
+.select:hover > button::after,
+.select:focus-within > button::after {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+@keyframes glow {
+    from {
+        --radial-bg-color: var(--primary-color);
+        --bg-x: 100;
+        --bg-y: 0;
+    }
+    50% {
+        --radial-bg-color: hsl(290deg 100% 58%);
+        --bg-x: 60;
+        --bg-y: 120;
+    }
+    to {
+        --radial-bg-color: var(--secondary-color);
+        --bg-x: 60;
+        --bg-y: 120;
+    }
+}

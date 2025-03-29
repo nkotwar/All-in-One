@@ -1,0 +1,58 @@
+/* Modal/popup styles */
+#calculatorPopupCard {
+    position: fixed;
+    left: -400px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 350px;
+    height: 80vh;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 2000;
+    transition: left 0.3s ease-in-out;
+    overflow: hidden;
+}
+
+#calculatorPopupCard.open {
+    left: 20px;
+}
+
+.popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: var(--primary-color);
+    color: var(--text-light);
+    border-radius: 10px 10px 0 0;
+}
+
+.popup-header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.popup-header button {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    font-size: 24px;
+    cursor: pointer;
+    margin-top: 0;
+    width: auto;
+    padding: 12px 12px 12px 70px;
+}
+
+.popup-body {
+    height: calc(100% - 60px);
+    padding: 15px;
+    overflow-y: auto;
+}
+
+.popup-results {
+    margin-top: 15px;
+    background: var(--light-bg);
+    border-radius: 0 0 10px 10px;
+    padding-bottom: 30px;
+}

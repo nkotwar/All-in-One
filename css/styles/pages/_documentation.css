@@ -1,0 +1,122 @@
+/* Documentation page styles */
+#documentation {
+  position: relative;
+}
+
+#formContainer{
+  text-align: start;
+}
+
+#pdfSidebar {
+  position: fixed;
+  top: 0;
+  right: -300px;
+  width: 300px;
+  height: 100vh;
+  background-color: var(--light-bg);
+  border-left: 1px solid #ddd;
+  padding: 20px;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+  transition: right 0.3s ease-in-out;
+  z-index: 1000;
+}
+
+#pdfSidebar.active {
+  right: 0;
+}
+
+#allPdfsList {
+  max-height: 400px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary-dark) #e3f2fd;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 15px;
+}
+
+#allPdfsList div {
+  margin-bottom: 10px;
+  padding: 10px;
+  background: #e3f2fd;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+#allPdfsList div:hover {
+  background: #bbdefb;
+}
+
+.sidebar-toggle {
+  width: max-content;
+  align-items: center;
+  position: absolute;
+  left: -10%;
+  top: 0;
+  background: var(--primary-color);
+  color: var(--text-light);
+  border: none;
+  border-radius: 5px 0 0 5px;
+  padding: 10px;
+  cursor: pointer;
+  z-index: 1001;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+  transition: background 0.3s;
+}
+
+.sidebar-toggle:hover {
+  background: var(--primary-dark);
+}
+
+.selected-pdf-item {
+  background: #e3f2fd;
+  padding: 10px;
+  border-radius: var(--border-radius);
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.3s, transform 0.2s;
+}
+
+.selected-pdf-item:hover {
+  background: #bbdefb;
+  transform: translateY(-2px);
+}
+
+.selected-pdf-item button {
+  background: #ff6b6b;
+  color: var(--text-light);
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: background 0.3s, transform 0.2s;
+  margin-top: 0;
+  margin-left: 10px;
+}
+
+.selected-pdf-item button:hover {
+  background: #ff4757;
+  transform: scale(1.2);
+}
+
+#logoimg2 img {
+  animation: rotateAnimation 10s linear infinite;
+}
+
+@keyframes rotateAnimation {
+  from {
+      transform: rotate(0deg);
+  }
+  to {
+      transform: rotate(360deg);
+  }
+}

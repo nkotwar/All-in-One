@@ -1,0 +1,235 @@
+/* CBS Hierarchy styles */
+.cbs-search-container {
+    margin: 50px auto;
+    padding: 24px;
+    background-color: #fff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+#cbsSearchInput {
+    width: 100%;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 16px;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#cbsSearchInput:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+.cbs-collapsible {
+    background-color: var(--primary-color);
+    color: var(--text-light);
+    cursor: pointer;
+    padding: 12px 16px;
+    width: 100%;
+    border: none;
+    text-align: left;
+    outline: none;
+    font-size: 16px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.cbs-collapsible:hover {
+    background-color: var(--primary-dark);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.cbs-collapsible.active {
+    background-color: var(--primary-dark);
+}
+
+.cbs-content {
+    padding-left: 24px;
+    margin-left: 8px;
+    border-left: 2px solid var(--primary-color);
+    height: 0;
+    overflow: hidden;
+}
+
+.cbs-item {
+    position: relative;
+    z-index: 0;
+    padding: 12px 16px;
+    margin: 8px 0;
+    width: 100%;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+}
+
+.cbs-item:hover {
+    background-color: #e0e0e0;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.cbs-leaf {
+    touch-action: manipulation; /* Improves touch responsiveness */
+    position: relative;
+    z-index: 1;
+    cursor: pointer;
+    padding: 10px 40px 10px 12px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    background-color: transparent;
+    border: 1px solid transparent;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+}
+
+.cbs-leaf:hover {
+    background-color: #f5f5f5;
+    border-color: #e0e0e0;
+}
+.cbs-leaf:hover .cbs-title-badge {
+    background: #d0d0d0;
+}
+
+/* Animation for copy effect */
+@keyframes strongPulse {
+    0% { background-color: transparent; transform: scale(1); }
+    50% { background-color: #e8f5e9; transform: scale(1.03); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    100% { background-color: transparent; transform: scale(1); }
+}
+
+.cbs-leaf.copied {
+    animation: strongPulse 0.6s ease;
+}
+
+.cbs-title-badge {
+    background: #e0e0e0;
+    border-radius: 12px;
+    padding: 2px 8px;
+    margin-right: 8px;
+    font-size: 0.8em;
+    color: #555;
+}
+.cbs-leaf.copied {
+    background-color: #e8f5e9;
+    transform: scale(0.98);
+}
+/* Add micro-interactions for better feedback */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+.cbs-leaf:active {
+    animation: pulse 0.3s ease;
+}
+.loading {
+    padding: 20px;
+    color: #666;
+    font-style: italic;
+}
+
+.error {
+    padding: 20px;
+    color: #d32f2f;
+    font-weight: bold;
+}
+
+.cbs-leaf-title {
+    color: #666;
+    font-size: 0.9em;
+    margin-left: 5px;
+}
+
+.cbs-leaf-name {
+    font-weight: bold;
+}
+.cbs-match-highlight {
+    font-weight: bold;
+    color: #0066cc;
+    background-color: rgba(0, 102, 204, 0.1);
+    border-left: 3px solid #0066cc;
+    padding-left: 5px;
+}
+/* Copy button styles */
+.cbs-copy-btn {
+    position: absolute;
+    right: 8px;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.05);
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: all 0.2s ease;
+    color: #666;
+    width: 28px;
+    height: 28px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.cbs-leaf:hover .cbs-copy-btn {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+}
+
+.cbs-copy-btn:hover {
+    color: var(--primary-color);
+    background-color: rgba(0, 0, 0, 0.08);
+    transform: translateY(-50%) scale(1.05);
+}
+
+.cbs-copy-btn:active {
+    transform: translateY(-50%) scale(0.95);
+    background-color: rgba(0, 0, 0, 0.12);
+}
+
+/* Updated feedback styles */
+.cbs-copy-feedback {
+    position: fixed;
+    background-color: #4CAF50;
+    color: white;
+    padding: 8px 12px 8px 8px;
+    border-radius: 6px;
+    font-size: 14px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+    max-width: calc(100vw - 16px);
+    box-sizing: border-box;
+}
+
+.cbs-copy-feedback svg {
+    flex-shrink: 0;
+    animation: checkBounce 0.4s ease;
+}
+.cbs-copy-btn svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+}
+
+.cbs-copy-feedback span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    max-width: 300px;
+}
+
+@keyframes checkBounce {
+    0% { transform: scale(0.8); opacity: 0; }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+}

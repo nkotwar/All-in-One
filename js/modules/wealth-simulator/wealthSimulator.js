@@ -496,7 +496,7 @@ document.addEventListener("DOMContentLoaded", () => {
             amount: withdrawalAmount
         });
     
-        if (withdrawalType === "premature" || withdrawalType === "marriage") {
+        if (withdrawalType === "premature") {
             isAccountClosed = true;
         }
     

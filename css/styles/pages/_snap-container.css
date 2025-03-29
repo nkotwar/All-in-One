@@ -1,0 +1,168 @@
+/* CKYC Snap styles */
+.snap-container {
+    background: #e0e5ec;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 20px 20px 60px #bebebe, -20px -20px 60px #ffffff;
+    align-items: center;
+    height: 100vh;
+}
+
+.layout {
+    display: flex;
+    gap: 20px;
+    width: 100%;
+}
+
+.left-column {
+    flex: 1;
+    max-width: 30%;
+}
+
+.right-column {
+    flex: 2;
+    display: flex;
+    gap: 20px;
+}
+
+#drop-area {
+    border: 2px dashed var(--primary-color);
+    padding: 40px;
+    text-align: center;
+    margin: 20px 0;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+    position: relative;
+}
+
+#drop-area:hover {
+    background-color: #e9f5ff;
+    border-color: var(--primary-dark);
+}
+
+#drop-area.dragover {
+    background-color: #cce5ff;
+    border-color: #004085;
+}
+
+#file-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+#crop-container {
+    margin-top: 20px;
+    border-radius: 15px;
+    background: #e0e5ec;
+    box-shadow: 10px 10px 20px #bebebe, -10px -10px 20px #ffffff;
+    overflow: hidden;
+}
+
+#controls, #sliders-container {
+    font-size: 0.8rem;
+    background: #e0e5ec;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 10px 10px 20px #bebebe, -10px -10px 20px #ffffff;
+    flex-direction: column;
+    align-items: center;
+    width: 50%;
+}
+
+.slider-row {
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+.slider-label-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.slider-label-row label {
+    flex: 1;
+    font-weight: 500;
+    color: #333;
+}
+
+.slider-label-row span {
+    min-width: 50px;
+    text-align: right;
+    font-weight: 500;
+    color: #333;
+}
+
+#button-container {
+    display: flex;
+}
+
+.slider-row button{
+    width: fit-content;
+}
+
+.loading-spinner {
+    font-size: 20px;
+    animation: spin 1s linear infinite;
+    display: none;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#visualization-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+#annealing-canvas {
+    border-radius: 10px;
+    background: #e0e5ec;
+    box-shadow: 5px 5px 10px #bebebe, -5px -5px 10px #ffffff;
+}
+
+#iteration-preview{
+    height: 150px;
+}
+
+@media (max-width: 768px) {
+    .layout {
+        flex-direction: column;
+    }
+    
+    .left-column {
+        max-width: 100%;
+    }
+    
+    #controls, #sliders-container {
+        width: 100%;
+    }
+    
+    .right-column {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 480px) {
+    .slider-label-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+    
+    .slider-label-row span {
+        text-align: left;
+    }
+}

@@ -1,0 +1,70 @@
+/* Card components */
+.result-card {
+    margin-top: 20px;
+    background-color: var(--light-bg);
+    border: 1px solid #ddd;
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: var(--box-shadow);
+    transition: transform 0.2s ease;
+}
+
+.result-card:hover {
+    transform: translateY(-5px);
+}
+
+.result-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    color: var(--text-dark);
+    margin-bottom: 10px;
+}
+
+.result-header i {
+    color: var(--primary-color);
+}
+
+.result-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2ecc71;
+    margin-bottom: 10px;
+}
+
+.info-card {
+    text-align: left;
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.info-card h4 {
+    margin-top: 0;
+    color: var(--secondary-color);
+    font-size: 1.5em;
+    font-weight: 600;
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.year-card {
+    padding: 15px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.year-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}

@@ -70,6 +70,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 pdfSidebar.style.display = 'none';
                 container.style.maxWidth = "none";
             }
+
+            // NEW: Focus on CBS search when that tab is selected
+            if (targetTab === 'cbs-hierarchy') {
+                setTimeout(() => {
+                    const searchInput = document.getElementById('cbsSearchInput');
+                    if (searchInput) {
+                        searchInput.focus();
+                        // Optional: Select all text if desired
+                        // searchInput.select();
+                    }
+                }, 50);
+            }
     
             // Collapse the menu when a tab is selected
             menu.classList.remove('expanded');
