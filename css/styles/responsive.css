@@ -1,4 +1,7 @@
 @media (max-width: 768px) {
+    .pdf-viewer-container {
+        grid-template-columns: 1fr;
+      }
     .container {
         margin-left: 0;
         padding: 10px;
@@ -112,3 +115,9 @@
         display: block;
     }
 }
+/* Responsive Adjustments */
+@media (max-width: 1200px) {
+    .pdf-viewer-container {
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+  }

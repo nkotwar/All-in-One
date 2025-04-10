@@ -40,16 +40,25 @@
     <link rel="stylesheet" href="css/styles/pages/_wealth-simulator.css" />
     <link rel="stylesheet" href="css/styles/pages/_cbs-hierarchy.css" />
     <link rel="stylesheet" href="css/styles/pages/_snap-container.css" />
+    <link rel="stylesheet" href="css/styles/pages/pdf-editor.css" />
+    <link rel="stylesheet" href="css/styles/pages/rtf2pdf.css" />
 
     <link rel="stylesheet" href="css/styles/responsive.css" />
+    <link rel="stylesheet" href="css/styles/viewer.css" />
 
     <!-- JavaScript Imports -->
+    <script src="js/libs/interact.min.js" defer></script>
     <script src="js/libs/CustomEase.min.js"></script>
     <script src="js/libs/gsap.min.js"></script>
     <script src="js/libs/Sortable.min.js" defer></script>
     <script src="js/libs/pdf-lib.min.js" defer></script>
     <script src="js/libs/cropper.min.js"></script>
     <script src="js/libs/chart.js" defer></script>
+    <script src="js/libs/pdf.worker.min.js" defer></script>
+    <script src="js/libs/pdf.min.js" defer></script>
+    <script src="js/libs/jszip.min.js" defer></script>
+    <script src="js/libs/mammoth.browser.min.js" defer></script>
+    <script src="js/libs/html2pdf.bundle.min.js" defer></script>
 
     <script src="js/core/eventHandlers.js" defer></script>
     <script src="js/core/main.js" defer></script>
@@ -64,7 +73,10 @@
     <script src="js/modules/wealth-simulator/agePicker.js" defer></script>
     <script src="js/modules/cbs-hierarchy/cbsData.js" defer></script>
     <script src="js/modules/cbs-hierarchy/cbshierarchy.js" defer></script>
+    <script src="js/modules/snap/pdf-editor.js"></script>
     <script src="js/modules/snap/ckycsnap.js"></script>
+    <script src="js/modules/snap/drop-handler.js"></script>
+    <script src="js/modules/snap/rtf2pdf.js"></script>
 
     <!-- Data Files -->
     <script src="js/data/raw1.js" defer></script>
@@ -1027,19 +1039,19 @@
       <!-- snap-container -->
       <div id="snap-container" class="snap-container content">
         <h2>CKYC/F-10 Snapper</h2>
+        <div id="drop-area">
+          <p>⬆️ Drag and drop an image here</p>
+          <input
+            type="file"
+            id="file-input"
+            accept="image/*"
+            style="display: none"
+          />
+          <!-- Hide the file input -->
+        </div>
         <div class="layout">
           <!-- Left Column: Image Uploader -->
           <div class="left-column">
-            <div id="drop-area">
-              <p>⬆️ Drag and drop an image here</p>
-              <input
-                type="file"
-                id="file-input"
-                accept="image/*"
-                style="display: none"
-              />
-              <!-- Hide the file input -->
-            </div>
             <div id="crop-container" style="display: none">
               <img id="image" src="" alt="Image to crop" />
             </div>

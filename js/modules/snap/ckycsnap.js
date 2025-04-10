@@ -6,6 +6,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let isSearching = false;
   let stopSearch = false;
   let isColorDepthLocked = false;
+  let currentMode = null; // 'image' or 'pdf'
+
+  window.currentMode = currentMode;
+
   // Initialize blur slider as locked
   let isBlurLocked = true; // Blur starts locked
   document.getElementById("blur-slider").disabled = true; // Disable the slider
@@ -23,70 +27,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const colorDepthValue = document.getElementById("color-depth-value");
   const downloadButton = document.getElementById("download-preview-button");
 
-  // Handle drag and drop
-  const dropArea = document.getElementById("drop-area");
-  const fileInput = document.getElementById("file-input");
-  const cropContainer = document.getElementById("crop-container");
-  const controls = document.getElementById("controls");
-  const previewCanvas = document.getElementById("preview-canvas");
   const upscaleSlider = document.getElementById("upscale-slider");
   const noiseSlider = document.getElementById("noise-slider");
   const qualitySlider = document.getElementById("quality-slider");
   const qualityValue = document.getElementById("quality-value");
   const upscaleValue = document.getElementById("upscale-value");
   const noiseValue = document.getElementById("noise-value");
-
-  // Handle drop event
-  dropArea.addEventListener("drop", function (e) {
-    e.preventDefault(); // Prevent default behavior
-    dropArea.classList.remove("dragover"); // Remove visual feedback
-
-    const file = e.dataTransfer.files[0]; // Get the dropped file
-    if (file && file.type.startsWith("image/")) {
-      loadImage(file); // Load the dropped image
-    }
-  });
-
-  // Handle drag-over event
-  dropArea.addEventListener("dragover", function (e) {
-    e.preventDefault(); // Prevent default behavior
-    dropArea.classList.add("dragover"); // Add visual feedback
-  });
-
-  // Handle drag-leave event
-  dropArea.addEventListener("dragleave", function () {
-    dropArea.classList.remove("dragover"); // Remove visual feedback
-  });
-
-  dropArea.addEventListener("click", function () {
-    fileInput.click(); // Trigger the file input
-  });
-
-  // Handle file selection
-  fileInput.addEventListener("change", function (e) {
-    const file = e.target.files[0];
-    if (file && file.type.startsWith("image/")) {
-      loadImage(file); // Load the selected image
-    }
-  });
-
-  // Add paste event listener to the document
-  document.addEventListener("paste", function (event) {
-    // Get the clipboard data
-    const clipboardItems = event.clipboardData.items;
-
-    // Loop through the clipboard items to find an image
-    for (const item of clipboardItems) {
-      if (item.type.startsWith("image")) {
-        // Get the image file from the clipboard
-        const blob = item.getAsFile();
-
-        // Load the image into the cropper
-        loadImage(blob);
-        break; // Stop after handling the first image
-      }
-    }
-  });
 
   // Validate file size input and disable/enable the adjust button
   document.getElementById("file-size").addEventListener("input", function () {
@@ -118,6 +64,66 @@ document.addEventListener("DOMContentLoaded", () => {
       adjustButton.disabled = false; // Enable the button
     }
   });
+
+  window.switchToImageMode = function (imageFile) {
+    currentMode = "image";
+
+    // Completely remove PDF editor container if it exists
+    const pdfEditor = document.getElementById("pdf-editor-container");
+    if (pdfEditor) {
+      pdfEditor.remove();
+      iframeWrappers = []; // Clear iframe wrappers array
+      pdfDocs = []; // Clear PDF documents array
+    }
+
+    // Show image editor elements
+    document.getElementById("crop-container").style.display = "block";
+    document.getElementById("controls").style.display = "flex";
+    document.getElementById("sliders-container").style.display = "grid";
+
+    // Reset left column width
+    document.querySelector(".left-column").style.maxWidth = "30%";
+    document.querySelector(".right-column").style.display = "flex";
+
+    // Load the image
+    loadImage(imageFile);
+  };
+
+  window.switchToPDFMode = function (pdfFiles) {
+    currentMode = "pdf";
+
+    // Clean up image editor resources
+    if (window.cropper) {
+      cropper.destroy();
+      cropper = null;
+    }
+
+    // Hide image editor elements
+    document.getElementById("crop-container").style.display = "none";
+    document.getElementById("controls").style.display = "none";
+    document.getElementById("sliders-container").style.display = "none";
+
+    // Clear any existing image
+    const imageElement = document.getElementById("image");
+    if (imageElement) {
+      imageElement.src = "";
+    }
+
+    // Initialize or show PDF editor
+    const pdfEditor = document.getElementById("pdf-editor-container");
+    if (!pdfEditor) {
+      // First time initialization
+      initPDFEditor(pdfFiles);
+    } else {
+      // Only add new PDFs if we're already in PDF mode
+      if (currentMode === "pdf") {
+        loadMultiplePDFs(pdfFiles);
+      } else {
+        // If switching from image mode, reinitialize with new PDFs
+        initPDFEditor(pdfFiles);
+      }
+    }
+  };
 
   // Add event listener for the auto-adjust button
   autoAdjustButton.addEventListener("click", async function () {
@@ -228,82 +234,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return neighbor;
   }
 
-  function simulatedAnnealing(
-    desiredFileSizeKB,
-    initialParams,
-    maxIterations = 1000
-  ) {
-    const canvas = document.getElementById("annealing-canvas");
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    let currentParams = initialParams;
-    let currentCost = costFunction(
-      getFileSize(currentParams),
-      desiredFileSizeKB
-    );
-
-    let bestParams = { ...currentParams };
-    let bestCost = currentCost;
-
-    let temperature = 1.0; // Initial temperature
-    const coolingRate = 0.99; // Cooling rate
-
-    const points = []; // Store points for visualization
-
-    for (let i = 0; i < maxIterations; i++) {
-      // Generate a neighbor
-      const neighborParams = getNeighbor(currentParams);
-      const neighborCost = costFunction(
-        getFileSize(neighborParams),
-        desiredFileSizeKB
-      );
-
-      // Accept the neighbor if it's better or with a certain probability
-      if (
-        neighborCost < currentCost ||
-        Math.random() < Math.exp((currentCost - neighborCost) / temperature)
-      ) {
-        currentParams = neighborParams;
-        currentCost = neighborCost;
-      }
-
-      // Update the best solution
-      if (currentCost < bestCost) {
-        bestParams = { ...currentParams };
-        bestCost = currentCost;
-      }
-
-      // Cool the temperature
-      temperature *= coolingRate;
-
-      // Store points for visualization
-      points.push({ x: i, y: currentCost });
-
-      // Draw the visualization
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.beginPath();
-      ctx.moveTo(0, canvas.height);
-      points.forEach((point, index) => {
-        const x = (point.x / maxIterations) * canvas.width;
-        const y = canvas.height - (point.y / desiredFileSizeKB) * canvas.height;
-        if (index === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      });
-      ctx.strokeStyle = "#007bff";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Stop if the cost is close enough
-      if (bestCost < 1) break; // Stop if the difference is less than 1 KB
-    }
-
-    return bestParams;
-  }
-
   function applyBlur(canvas, blurLevel) {
     const ctx = canvas.getContext("2d");
     ctx.filter = `blur(${blurLevel}px)`;
@@ -326,11 +256,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     ctx.putImageData(imageData, 0, 0);
     return canvas;
-  }
-
-  function handleFileSelect(e) {
-    const file = e.target.files[0];
-    loadImage(file);
   }
 
   // Function to calculate the file size range
@@ -451,27 +376,41 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Load image and initialize cropper
-  function loadImage(file) {
+  window.loadImage = function (file) {
+    // Clean up any PDF editor resources
+    const pdfEditor = document.getElementById("pdf-editor-container");
+    if (pdfEditor) {
+      pdfEditor.remove();
+      iframeWrappers = [];
+      pdfDocs = [];
+    }
+
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onload = function (e) {
         const image = document.getElementById("image");
         image.src = e.target.result;
-        cropContainer.style.display = "block"; // Show the crop container
-        controls.style.display = "flex"; // Show the controls (if needed)
-        document.getElementById("sliders-container").style.display = "grid"; // Show the sliders
 
-        // Initialize the cropper with a default crop area
+        // Show image editor elements
+        document.getElementById("crop-container").style.display = "block";
+        document.getElementById("controls").style.display = "flex";
+        document.getElementById("sliders-container").style.display = "grid";
+
+        // Reset layout
+        document.querySelector(".left-column").style.maxWidth = "30%";
+        document.querySelector(".right-column").style.display = "flex";
+
+        // Initialize the cropper
         initCropper(image);
 
-        // Calculate the file size range after the image is loaded and cropped
+        // Calculate the file size range
         setTimeout(() => {
           calculateFileSizeRange();
-        }, 100); // Small delay to ensure the cropper is fully initialized
+        }, 100);
       };
       reader.readAsDataURL(file);
     }
-  }
+  };
 
   function handleSliderChange() {
     const croppedImage = cropper.getCroppedCanvas();
@@ -557,54 +496,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     ctx.putImageData(imageData, 0, 0);
     return canvas; // Return the noisy canvas
-  }
-
-  function adjustFileSize(croppedImage, desiredFileSizeKB) {
-    const progress = document.getElementById("progress");
-    progress.style.display = "block"; // Show progress indicator
-
-    let quality = 1.0;
-    let imageUrl;
-    let fileSizeKB;
-
-    function getFileSizeKB(dataURL) {
-      const fileSizeBytes = dataURL.length * (3 / 4);
-      return fileSizeBytes / 1024;
-    }
-
-    const upscaleFactor = parseFloat(upscaleSlider.value);
-    const noiseLevel = parseFloat(noiseSlider.value);
-
-    const upscaledImage = upscaleImage(croppedImage, upscaleFactor);
-    const noisyImage = addNoise(upscaledImage, noiseLevel);
-
-    function updatePreviewAndFileSize(image, quality) {
-      imageUrl = image.toDataURL("image/jpeg", quality);
-      fileSizeKB = getFileSizeKB(imageUrl);
-      updateDownloadButton(imageUrl, fileSizeKB);
-    }
-
-    const interval = setInterval(() => {
-      if (fileSizeKB <= desiredFileSizeKB || quality <= 0) {
-        clearInterval(interval);
-        progress.style.display = "none"; // Hide progress indicator
-        updateDownloadButton(imageUrl, fileSizeKB);
-        return;
-      }
-
-      quality -= 0.05;
-      updatePreviewAndFileSize(noisyImage, quality);
-    }, 100);
-  }
-
-  function getFileUrl(params) {
-    const croppedImage = cropper.getCroppedCanvas();
-    const upscaledImage = upscaleImage(croppedImage, params.upscaleFactor);
-    const noisyImage = addNoise(upscaledImage, params.noiseLevel);
-    const blurredImage = applyBlur(noisyImage, params.blurLevel);
-    const colorDepthImage = reduceColorDepth(blurredImage, params.bitDepth);
-
-    return colorDepthImage.toDataURL("image/jpeg", params.quality);
   }
 
   // Function to add the stop button
@@ -888,76 +779,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Remove the stop button
     removeStopButton();
-  }
-
-  function updateIterationPreview() {
-    const croppedImage = cropper.getCroppedCanvas();
-    if (!croppedImage || !(croppedImage instanceof HTMLCanvasElement)) {
-      console.error("Cropper did not return a valid canvas.");
-      return;
-    }
-
-    // Get values from all sliders
-    const upscaleFactor = parseFloat(upscaleSlider.value);
-    const noiseLevel = parseFloat(noiseSlider.value);
-    const blurLevel = parseFloat(blurSlider.value);
-    const bitDepth = parseFloat(colorDepthSlider.value);
-    const quality = parseFloat(qualitySlider.value);
-
-    // Apply all effects
-    const upscaledImage = upscaleImage(croppedImage, upscaleFactor);
-    const noisyImage = addNoise(upscaledImage, noiseLevel);
-    const blurredImage = applyBlur(noisyImage, blurLevel);
-    const colorDepthImage = reduceColorDepth(blurredImage, bitDepth);
-
-    // Update the iteration preview
-    const preview = document.getElementById("iteration-preview");
-    preview.src = colorDepthImage.toDataURL("image/jpeg", quality);
-    preview.style.display = "block";
-  }
-
-  function updateCurrentBest(bestParams) {
-    document.getElementById(
-      "best-upscale-value"
-    ).textContent = `${bestParams.upscaleFactor.toFixed(1)}x`;
-    document.getElementById(
-      "best-noise-value"
-    ).textContent = `${bestParams.noiseLevel}%`;
-    document.getElementById("best-quality-value").textContent = `${Math.round(
-      bestParams.quality * 100
-    )}%`;
-    document.getElementById(
-      "best-blur-value"
-    ).textContent = `${bestParams.blurLevel}px`;
-    document.getElementById(
-      "best-color-depth-value"
-    ).textContent = `${bestParams.bitDepth}-bit`;
-    document.getElementById("best-file-size").textContent = `${getFileSize(
-      bestParams
-    ).toFixed(2)} KB`;
-  }
-
-  function applyBestCombination(bestCombination) {
-    const croppedImage = cropper.getCroppedCanvas();
-
-    // Update sliders and their display values
-    upscaleSlider.value = bestCombination.upscaleFactor;
-    noiseSlider.value = bestCombination.noiseLevel;
-    upscaleValue.textContent = `${bestCombination.upscaleFactor.toFixed(1)}x`;
-    noiseValue.textContent = `${bestCombination.noiseLevel.toFixed(2)}%`;
-
-    const upscaledImage = upscaleImage(
-      croppedImage,
-      bestCombination.upscaleFactor
-    );
-    const noisyImage = addNoise(upscaledImage, bestCombination.noiseLevel);
-
-    // Display download button
-    const imageUrl = noisyImage.toDataURL(
-      "image/jpeg",
-      bestCombination.quality
-    );
-    updateDownloadButton(imageUrl, bestCombination.fileSizeKB);
   }
 
   document.getElementById("stop-button").addEventListener("click", function () {

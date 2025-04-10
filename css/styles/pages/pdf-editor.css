@@ -1,0 +1,620 @@
+/* Enhanced PDF Editor with iFrames - Optimized */
+.pdf-editor-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 15px;
+  gap: 15px;
+}
+
+.pdf-toolbar {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.pdf-toolbar-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #5f6368;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 36px;
+}
+
+.toolbar-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #202124;
+}
+
+.toolbar-btn i {
+  font-size: 20px;
+}
+
+.toolbar-btn.danger {
+  color: #d93025;
+}
+
+.toolbar-btn.danger:hover {
+  background: rgba(217, 48, 37, 0.08);
+}
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.12);
+  margin: 0 4px;
+}
+
+/* Active state for buttons */
+.toolbar-btn:active {
+  transform: scale(0.96);
+}
+
+/* Focus styles */
+.toolbar-btn:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: 2px;
+  background: rgba(26, 115, 232, 0.08);
+}
+
+.pdf-viewer-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+  padding: 15px;
+}
+
+/* Modern Material-UI Inspired PDF Iframe Wrapper */
+.pdf-iframe-wrapper {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 420px;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.07),
+    0 4px 8px rgba(0, 0, 0, 0.07), 0 8px 16px rgba(0, 0, 0, 0.07);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.pdf-iframe-wrapper:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.1),
+    0 8px 16px rgba(0, 0, 0, 0.1), 0 16px 32px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
+  border-color: rgba(0, 0, 0, 0.24);
+}
+
+.pdf-title {
+  padding: 12px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: #424242;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.pdf-title:hover {
+  background: #f5f5f5;
+}
+
+.pdf-title span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 8px;
+}
+
+.pdf-title span:first-child {
+  flex: 1;
+  font-weight: 500;
+  color: #212121;
+}
+
+.pdf-title span:not(:first-child) {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 400;
+  color: #616161;
+}
+
+/* Modern PDF Iframe Actions */
+.pdf-iframe-actions {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 6px 12px;
+  border-radius: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+}
+
+.pdf-iframe-wrapper:hover .pdf-iframe-actions {
+  opacity: 1;
+}
+
+.pdf-iframe-actions button {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #5f6368;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.pdf-iframe-actions button:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: #202124;
+  transform: scale(1.1);
+}
+
+.pdf-iframe-actions button i {
+  font-size: 18px;
+}
+
+.pdf-iframe-actions button::after {
+  content: attr(title);
+  position: absolute;
+  top: -38px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #424242;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  font-weight: 400;
+}
+
+.pdf-iframe-actions button:hover::after {
+  opacity: 1;
+}
+
+/* Modern Button Styles */
+.pdf-iframe-actions .download-btn:hover {
+  color: #1a73e8;
+  background: rgba(26, 115, 232, 0.08);
+}
+
+.pdf-iframe-actions .split-btn:hover {
+  color: #fbbc04;
+  background: rgba(251, 188, 4, 0.08);
+}
+
+.pdf-iframe-actions .merge-btn:hover {
+  color: #34a853;
+  background: rgba(52, 168, 83, 0.08);
+}
+
+.pdf-iframe-actions .delete-btn:hover {
+  color: #ea4335;
+  background: rgba(234, 67, 53, 0.08);
+}
+
+/* Modern Iframe Styling */
+.pdf-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  flex-grow: 1;
+  min-height: 0;
+  background: #f5f5f5;
+}
+
+/* Modern Empty State (optional) */
+.pdf-iframe-wrapper.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fafafa;
+  border: 1px dashed rgba(0, 0, 0, 0.12);
+}
+
+.pdf-iframe-wrapper.empty::before {
+  content: "PDF Preview";
+  color: rgba(0, 0, 0, 0.36);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Split Controls - Optimized */
+.split-controls {
+  position: absolute;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 400px;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  border: 1px solid #e0e0e0;
+}
+
+.split-header {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+  text-align: center;
+}
+
+.split-slider-container {
+  position: relative;
+  height: 40px;
+  margin: 15px 0;
+}
+
+.split-slider-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #e0e5ec;
+  transform: translateY(-50%);
+  border-radius: 2px;
+}
+
+.split-slider-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  background: var(--primary-color);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+  transition: transform 0.1s ease;
+}
+
+.split-slider-handle:active {
+  transform: translate(-50%, -50%) scale(1.1);
+  cursor: grabbing;
+}
+
+.split-preview {
+  display: flex;
+  justify-content: space-between;
+  margin: 15px 0;
+  gap: 10px;
+}
+
+.split-section {
+  flex: 1;
+  padding: 10px;
+  background: #f8faff;
+  border-radius: 6px;
+  border: 1px solid #d6e4ff;
+  text-align: center;
+}
+
+.split-section h4 {
+  margin: 0 0 8px 0;
+  color: #555;
+  font-size: 13px;
+}
+
+.split-pages {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+.split-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.split-actions button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.split-actions .split-cancel-btn {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.split-actions .split-cancel-btn:hover {
+  background: #e0e0e0;
+}
+
+.split-actions .split-confirm-btn {
+  background: var(--primary-color);
+  color: white;
+}
+
+.split-actions .split-confirm-btn:hover {
+  background: var(--primary-dark);
+}
+
+/* Split Overlay Dialog */
+.split-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.split-dialog {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  width: 400px;
+  max-width: 90%;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+}
+
+.split-dialog h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.split-dialog p {
+  margin-bottom: 20px;
+}
+
+.split-dialog .split-preview {
+  margin: 20px 0;
+}
+
+.split-dialog .split-section {
+  padding: 15px;
+}
+
+.split-dialog .split-section h4 {
+  margin-top: 0;
+}
+
+.split-dialog .file-name {
+  font-size: 13px;
+  color: #666;
+  margin-top: 5px;
+}
+
+.split-dialog .split-actions {
+  margin-top: 20px;
+}
+
+.split-dialog #cancel-split {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.split-dialog #confirm-split {
+  background: var(--primary-color);
+  color: white;
+}
+
+.split-dialog #confirm-split:hover {
+  background: var(--primary-dark);
+}
+
+/* Progress Container */
+.pdf-progress-container {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+
+.pdf-progress-content {
+  background: white;
+  padding: 25px;
+  border-radius: 8px;
+  text-align: center;
+  width: 300px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.pdf-progress-content h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.pdf-progress-bar {
+  width: 100%;
+  height: 10px;
+  background: #e0e5ec;
+  border-radius: 5px;
+  margin: 15px 0;
+  overflow: hidden;
+}
+
+.pdf-progress-fill {
+  height: 100%;
+  background: var(--primary-color);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+#pdf-progress-text {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Layout Transitions */
+.left-column {
+  transition: max-width 0.3s ease;
+}
+
+.right-column {
+  transition: display 0.3s ease;
+}
+
+#pdf-editor-container,
+#crop-container,
+#controls,
+#sliders-container {
+  transition: opacity 0.3s ease;
+}
+.merge-btn i {
+  transform: rotate(90deg);
+}
+/* Confirmation Dialog Styles */
+.confirmation-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.confirmation-dialog {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  width: 320px;
+  max-width: 90%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: dialogEnter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.confirmation-dialog h3 {
+  margin: 0 0 8px 0;
+  color: #202124;
+  font-size: 18px;
+}
+
+.confirmation-dialog p {
+  margin: 0 0 20px 0;
+  color: #5f6368;
+  font-size: 14px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dialog-btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: #1a73e8;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.dialog-btn.danger {
+  color: #d93025;
+}
+
+.dialog-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.dialog-btn.danger:hover {
+  background: rgba(217, 48, 37, 0.08);
+}
+
+@keyframes dialogEnter {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Add to your existing CSS */
+.pdf-filename {
+  cursor: text;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: background-color 0.2s;
+}
+
+.pdf-filename:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.pdf-filename-edit {
+  font: inherit;
+  color: inherit;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 1px 3px;
+  margin: -1px 0;
+  width: calc(100% - 30px);
+  max-width: 200px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
