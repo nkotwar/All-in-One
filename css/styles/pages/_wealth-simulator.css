@@ -6,6 +6,21 @@
     justify-content: space-between;
 }
 
+.ssy-layout {
+    gap: 40px;
+}
+
+.ssy-inputs {
+    flex: 1;
+    max-width: 300px;
+}
+
+.ssy-visuals {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+}
+
 .chart-container {
     width: 100%;
     max-width: 500px;
@@ -21,42 +36,312 @@
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
+/* Removing the old withdrawal list styles */
 .withdrawal-list {
-    border: 1px solid #ddd;
-    margin-top: 20px;
-    background: #fff;
+    display: none;
+}
+
+/* Wealth Simulator styles */
+.calculator-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    justify-content: space-between;
+}
+
+.ssy-layout {
+    gap: 40px;
+}
+
+.ssy-inputs {
+    flex: 1;
+    max-width: 300px;
+}
+
+.ssy-visuals {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-container {
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.withdrawal-section {
+    margin-top: 30px;
+    text-align: center;
+    background: #f8f9fa;
     padding: 15px;
     border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
-.withdrawal-list ul {
-    list-style-type: none;
-    padding: 0;
+/* Removing the old withdrawal list styles */
+.withdrawal-list {
+    display: none;
 }
 
-.withdrawal-list ul li {
-    background: #e3f2fd;
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 10px;
+/* Wealth Simulator styles */
+.calculator-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    justify-content: space-between;
+}
+
+.ssy-layout {
+    gap: 40px;
+}
+
+.ssy-inputs {
+    flex: 1;
+    max-width: 300px;
+}
+
+.ssy-visuals {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-container {
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.withdrawal-section {
+    margin-top: 30px;
+    text-align: center;
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Removing the old withdrawal list styles */
+.withdrawal-list {
+    display: none;
+}
+
+/* Wealth Simulator styles */
+.calculator-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    justify-content: space-between;
+}
+
+.ssy-layout {
+    gap: 40px;
+}
+
+.ssy-inputs {
+    flex: 1;
+    max-width: 300px;
+}
+
+.ssy-visuals {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-container {
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.withdrawal-section {
+    margin-top: 30px;
+    text-align: center;
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Removing the old withdrawal list styles */
+.withdrawal-list {
+    display: none;
+}
+
+/* Wealth Simulator styles */
+.calculator-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    justify-content: space-between;
+}
+
+.ssy-layout {
+    gap: 40px;
+}
+
+.ssy-inputs {
+    flex: 1;
+    max-width: 300px;
+}
+
+.ssy-visuals {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-container {
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.withdrawal-section {
+    margin-top: 30px;
+    text-align: center;
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Removing the old withdrawal list styles */
+.withdrawal-list {
+    display: none;
+}
+
+/* Timeline Styles */
+.timeline-container {
+    position: relative;
+    width: 100%;
+    margin-top: 25px;
+    padding: 20px 0;
+    user-select: none;
+}
+
+.timeline-track {
+    width: 100%;
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    position: relative;
+}
+
+.timeline-track::after { /* Style for greyed-out effect */
+    content: '';
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background: #bbb; /* Darker grey for disabled section */
+    border-radius: 0 4px 4px 0;
+    z-index: 1;
+    width: 0; /* Initially hidden */
+    right: 0;
+}
+
+.timeline-labels {
     display: flex;
     justify-content: space-between;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #555;
+    position: relative;
+}
+
+.timeline-marker {
+    position: absolute;
+    bottom: -5px;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
     align-items: center;
+    font-size: 10px;
 }
 
-.withdrawal-list ul li button {
-    background: #ff6b6b;
-    color: var(--text-light);
-    border: none;
+.timeline-marker::before {
+    content: '';
+    width: 1px;
+    height: 5px;
+    background: #999;
+    margin-bottom: 2px;
+}
+
+.timeline-events {
+    position: absolute;
+    top: 10px; /* Vertically center on the track */
+    left: 0;
+    width: 100%;
+    height: 20px;
+}
+
+.timeline-event {
+    position: absolute;
+    width: auto;
+    height: 24px;
+    cursor: grab;
+    font-size: 20px;
+    text-align: center;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 5px;
+    background: white;
     border-radius: 5px;
-    padding: 5px 10px;
-    cursor: pointer;
-    transition: background 0.3s;
+    border: 1px solid #ccc;
 }
 
-.withdrawal-list ul li button:hover {
-    background: #ff4757;
+.timeline-event .event-info {
+    display: flex;
+    align-items: center;
+    margin-right: 10px;
+}
+
+.timeline-event.dragging {
+    cursor: grabbing;
+}
+
+.timeline-event.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.timeline-event .event-icon {
+    margin-right: 5px;
+}
+
+.timeline-event .event-age {
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.timeline-event .remove-event {
+    width: 16px;
+    height: 16px;
+    background: #ff4d4d;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 10px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.timeline-event:hover .remove-event {
+    display: flex;
+}
+
+.event-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 15px;
 }
 
 .age-picker-container {
@@ -96,86 +381,4 @@
     margin-left: 20px;
     margin-top: 10px;
     color: #555;
-}
-
-.withdrawal-card button {
-    all: unset;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    position: relative;
-    border-radius: 999vw;
-    background-color: rgba(0, 0, 0, 0.75);
-    box-shadow: -0.15em -0.15em 0.15em -0.075em rgba(5, 5, 5, 0.25), 0.0375em 0.0375em 0.0675em 0 rgba(5, 5, 5, 0.1);
-}
-
-.withdrawal-card button::after {
-    content: "";
-    position: absolute;
-    z-index: 0;
-    width: calc(100% + 0.3em);
-    height: calc(100% + 0.3em);
-    top: -0.15em;
-    left: -0.15em;
-    border-radius: inherit;
-    background: linear-gradient(-135deg, rgba(5, 5, 5, 0.5), transparent 20%, transparent 100%);
-    filter: blur(0.0125em);
-    opacity: 0.25;
-    mix-blend-mode: multiply;
-}
-
-.withdrawal-card button .button-outer {
-    position: relative;
-    z-index: 1;
-    border-radius: inherit;
-    transition: box-shadow 300ms ease;
-    will-change: box-shadow;
-    box-shadow: 0 0.05em 0.05em -0.01em rgba(5, 5, 5, 1), 0 0.01em 0.01em -0.01em rgba(5, 5, 5, 0.5), 0.15em 0.3em 0.1em -0.01em rgba(5, 5, 5, 0.25);
-}
-
-.withdrawal-card button:hover .button-outer {
-    box-shadow: 0 0 0 0 rgba(5, 5, 5, 1), 0 0 0 0 rgba(5, 5, 5, 0.5), 0 0 0 0 rgba(5, 5, 5, 0.25);
-}
-
-.button-inner {
-    --inset: 0.035em;
-    position: relative;
-    z-index: 1;
-    border-radius: inherit;
-    padding: 1em 1.5em;
-    background-image: linear-gradient(135deg, rgba(230, 230, 230, 1), rgba(180, 180, 180, 1));
-    transition: box-shadow 300ms ease, clip-path 250ms ease, background-image 250ms ease, transform 250ms ease;
-    will-change: box-shadow, clip-path, background-image, transform;
-    overflow: clip;
-    clip-path: inset(0 0 0 0 round 999vw);
-    box-shadow: 0 0 0 0 inset rgba(5, 5, 5, 0.1), -0.05em -0.05em 0.05em 0 inset rgba(5, 5, 5, 0.25), 0 0 0 0 inset rgba(5, 5, 5, 0.1), 0 0 0.05em 0.2em inset rgba(255, 255, 255, 0.25), 0.025em 0.05em 0.1em 0 inset rgba(255, 255, 255, 1), 0.12em 0.12em 0.12em inset rgba(255, 255, 255, 0.25), -0.075em -0.25em 0.25em 0.1em inset rgba(5, 5, 5, 0.25);
-}
-
-.withdrawal-card button:hover .button-inner {
-    clip-path: inset(clamp(1px, 0.0625em, 2px) clamp(1px, 0.0625em, 2px) clamp(1px, 0.0625em, 2px) clamp(1px, 0.0625em, 2px) round 999vw);
-    box-shadow: 0.1em 0.15em 0.05em 0 inset rgba(5, 5, 5, 0.75), -0.025em -0.03em 0.05em 0.025em inset rgba(5, 5, 5, 0.5), 0.25em 0.25em 0.2em 0 inset rgba(5, 5, 5, 0.5), 0 0 0.05em 0.5em inset rgba(255, 255, 255, 0.15), 0 0 0 0 inset rgba(255, 255, 255, 1), 0.12em 0.12em 0.12em inset rgba(255, 255, 255, 0.25), -0.075em -0.12em 0.2em 0.1em inset rgba(5, 5, 5, 0.25);
-}
-
-.withdrawal-card button .button-inner span {
-    position: relative;
-    z-index: 4;
-    font-family: "Inter", sans-serif;
-    letter-spacing: -0.05em;
-    font-weight: 500;
-    color: transparent;
-    background-image: linear-gradient(135deg, rgba(25, 25, 25, 1), rgba(75, 75, 75, 1));
-    -webkit-background-clip: text;
-    background-clip: text;
-    transition: transform 250ms ease;
-    display: block;
-    will-change: transform;
-    text-shadow: rgba(0, 0, 0, 0.1) 0 0 0.1em;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-}
-
-.withdrawal-card button:hover .button-inner span,
-.withdrawal-card button:active .button-inner {
-    transform: scale(0.975);
 }

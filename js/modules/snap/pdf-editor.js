@@ -76,9 +76,125 @@ function initPDFEditor(files) {
 
   // Add event listeners
   setupPDFEditorEvents();
+  setupDragAndDrop(); // Add this call
 
   // Load the PDF files
   loadMultiplePDFs(files);
+}
+
+function setupDragAndDrop() {
+  const container = document.getElementById("pdf-viewer-container");
+  let draggedItem = null;
+  let placeholder = null;
+
+  container.addEventListener("dragstart", (e) => {
+    // Prevent dragging if the target is the split slider handle or an input field
+    if (
+      e.target.classList.contains("split-slider-handle") ||
+      e.target.tagName === "INPUT"
+    ) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    const target = e.target.closest(".pdf-iframe-wrapper");
+    if (target) {
+      draggedItem = target;
+
+      // Create a placeholder element
+      placeholder = document.createElement("div");
+      placeholder.className = "pdf-drag-placeholder";
+      placeholder.style.height = `${draggedItem.offsetHeight}px`;
+
+      // Use a timeout to allow the browser to create its drag image
+      setTimeout(() => {
+        if (draggedItem) {
+          // Replace the dragged item with the placeholder in the DOM
+          draggedItem.parentNode.replaceChild(placeholder, draggedItem);
+          // Add the dragging class to the item being held by the mouse
+          draggedItem.classList.add("dragging");
+        }
+      }, 0);
+    }
+  });
+
+  container.addEventListener("dragend", () => {
+    // This event fires when the drag is cancelled or completed
+    if (draggedItem) {
+      draggedItem.classList.remove("dragging");
+      // If the placeholder is still in the DOM, the drop was cancelled.
+      // Put the original item back where it was.
+      if (placeholder && placeholder.parentNode) {
+        placeholder.parentNode.replaceChild(draggedItem, placeholder);
+      }
+    }
+    draggedItem = null;
+    placeholder = null;
+  });
+
+  container.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    if (!placeholder) return;
+
+    // Find the iframe wrapper being hovered over (that isn't the placeholder)
+    const target = e.target.closest(".pdf-iframe-wrapper");
+    if (target && target !== draggedItem) {
+      const rect = target.getBoundingClientRect();
+      // Determine if dragging over the top or bottom half of the element
+      const isAfter = e.clientY > rect.top + rect.height / 2;
+
+      // Move the placeholder to the new position
+      if (isAfter) {
+        container.insertBefore(placeholder, target.nextElementSibling);
+      } else {
+        container.insertBefore(placeholder, target);
+      }
+    }
+  });
+
+  container.addEventListener("drop", (e) => {
+    e.preventDefault();
+    if (!draggedItem || !placeholder) return;
+
+    // Replace the placeholder with the actual dragged item
+    if (placeholder.parentNode) {
+      placeholder.parentNode.replaceChild(draggedItem, placeholder);
+    }
+    draggedItem.classList.remove("dragging");
+
+    // Get the new order of pdfId's from the DOM
+    const newOrderIds = Array.from(
+      container.querySelectorAll(".pdf-iframe-wrapper")
+    ).map((wrapper) => wrapper.dataset.pdfId);
+
+    // Reorder the underlying pdfDocs array
+    pdfDocs.sort((a, b) => {
+      return newOrderIds.indexOf(a.id) - newOrderIds.indexOf(b.id);
+    });
+
+    // Clean up
+    draggedItem = null;
+    placeholder = null;
+
+    // Refresh the UI to update indices and button states
+    refreshPDFIframes();
+  });
+}
+
+function disableAllDragging() {
+  document.querySelectorAll(".pdf-iframe-wrapper").forEach((wrapper) => {
+    wrapper.draggable = false;
+    // Add a class to visually indicate that dragging is disabled
+    wrapper.classList.add("no-drag");
+  });
+}
+
+function enableAllDragging() {
+  document.querySelectorAll(".pdf-iframe-wrapper").forEach((wrapper) => {
+    wrapper.draggable = true;
+    wrapper.classList.remove("no-drag");
+  });
 }
 
 function setupPDFEditorEvents() {
@@ -153,6 +269,7 @@ function handleClearAllPDFs() {
     document.body.removeChild(overlay);
   });
 }
+
 function updateToolbarButtonsState() {
   const hasPDFs = pdfDocs.length > 0;
   const mergeBtn = document.getElementById("pdf-merge-all-btn");
@@ -174,7 +291,7 @@ async function loadMultiplePDFs(files) {
       files.map(async (file) => {
         const arrayBuffer = await file.arrayBuffer();
         const tempPdfDoc = await PDFLib.PDFDocument.load(arrayBuffer, {
-          ignoreEncryption: true, // 🔧 Added this option to handle encrypted PDFs
+          ignoreEncryption: true,
         });
 
         return {
@@ -183,7 +300,7 @@ async function loadMultiplePDFs(files) {
           blob: file,
           url: URL.createObjectURL(file),
           pageCount: tempPdfDoc.getPageCount(),
-          id: Date.now() + Math.random().toString(36).substr(2, 9), // Unique ID for each PDF
+          id: Date.now() + Math.random().toString(36).substr(2, 9),
         };
       })
     );
@@ -193,7 +310,8 @@ async function loadMultiplePDFs(files) {
 
     // Create iframes for new PDFs
     newPdfDocs.forEach((pdfDoc, index) => {
-      createPDFIframe(pdfDoc, pdfDocs.length - files.length + index);
+      const globalIndex = pdfDocs.length - newPdfDocs.length + index;
+      createPDFIframe(pdfDoc, globalIndex);
     });
 
     updateMergeButtonsState();
@@ -213,18 +331,21 @@ function createPDFIframe(pdfDoc, index) {
   wrapper.className = "pdf-iframe-wrapper";
   wrapper.dataset.index = index;
   wrapper.dataset.pdfId = pdfDoc.id;
+  wrapper.draggable = true; // Make the wrapper draggable
 
   // Add title bar with editable name
   const titleBar = document.createElement("div");
   titleBar.className = "pdf-title";
   titleBar.innerHTML = `
     <span class="pdf-filename" title="${pdfDoc.name}">${pdfDoc.name}</span>
-    <span>${pdfDoc.pageCount} pg</span>
-    <span>${
-      pdfDoc.file.size > 1024 * 1024
-        ? (pdfDoc.file.size / (1024 * 1024)).toFixed(1) + "MB"
-        : (pdfDoc.file.size / 1024).toFixed(1) + "KB"
-    }</span>
+    <div class="pdf-info">
+      <span>${pdfDoc.pageCount} pg</span>
+      <span class="pdf-size" title="Original file size">${
+        pdfDoc.file.size > 1024 * 1024
+          ? (pdfDoc.file.size / (1024 * 1024)).toFixed(1) + "MB"
+          : (pdfDoc.file.size / 1024).toFixed(1) + "KB"
+      }</span>
+    </div>
   `;
   wrapper.appendChild(titleBar);
 
@@ -403,6 +524,9 @@ function addSplitMarkers(wrapper, pdfIndex) {
   const pdfDoc = pdfDocs[pdfIndex];
   if (!pdfDoc || pdfDoc.pageCount < 2) return;
 
+  // Disable dragging on all items while split UI is active
+  disableAllDragging();
+
   // Create split controls container
   const splitControls = document.createElement("div");
   splitControls.className = "split-controls";
@@ -512,12 +636,16 @@ function addSplitMarkers(wrapper, pdfIndex) {
     .querySelector(".split-cancel-btn")
     .addEventListener("click", () => {
       wrapper.removeChild(splitControls);
+      // Re-enable dragging
+      enableAllDragging();
     });
 
   splitControls
     .querySelector(".split-confirm-btn")
     .addEventListener("click", () => {
       wrapper.removeChild(splitControls);
+      // Re-enable dragging before showing the next dialog
+      enableAllDragging();
       showSplitDialog(pdfIndex, currentSplitPage);
     });
 }
@@ -881,6 +1009,55 @@ async function handleDownloadAsZip() {
   } catch (error) {
     hideProgress();
     alert("Failed to create ZIP file: " + error.message);
+    console.error(error);
+  }
+}
+
+async function compressPDF(pdfIndex, quality) {
+  showProgress("Compressing PDF...");
+  try {
+    const pdfToCompress = pdfDocs[pdfIndex];
+    const arrayBuffer = await pdfToCompress.blob.arrayBuffer();
+    const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+
+    // --- FIX: Convert Map values to an Array before filtering ---
+    const imageObjects = Array.from(pdfDoc.context.indirectObjects.values()).filter(
+      (obj) => obj instanceof PDFLib.PDFImage
+    );
+
+    let imagesCompressed = 0;
+    for (const image of imageObjects) {
+      // Only attempt to re-compress JPEG images
+      if (image.format.toLowerCase() !== 'jpg' && image.format.toLowerCase() !== 'jpeg') {
+        continue;
+      }
+
+      // Embed the re-compressed image
+      const newImageBytes = await image.embed(image.data, { quality });
+      image.setData(newImageBytes);
+      imagesCompressed++;
+    }
+
+    if (imagesCompressed === 0) {
+      hideProgress();
+      alert("No compressible (JPEG) images found in this PDF.");
+      return;
+    }
+
+    const compressedBytes = await pdfDoc.save({ useObjectStreams: true });
+    const newName = pdfToCompress.name.replace(".pdf", "_compressed.pdf");
+    const compressedPdfObject = createPDFObject(compressedBytes, newName, pdfDoc.getPageCount());
+
+    // Replace the old PDF object with the new compressed one
+    pdfDocs.splice(pdfIndex, 1, compressedPdfObject);
+
+    // Refresh the UI to show the new PDF
+    refreshPDFIframes();
+    hideProgress();
+
+  } catch (error) {
+    hideProgress();
+    alert("Failed to compress PDF: " + error.message);
     console.error(error);
   }
 }

@@ -41,24 +41,25 @@
     <link rel="stylesheet" href="css/styles/pages/_cbs-hierarchy.css" />
     <link rel="stylesheet" href="css/styles/pages/_snap-container.css" />
     <link rel="stylesheet" href="css/styles/pages/pdf-editor.css" />
-    <link rel="stylesheet" href="css/styles/pages/rtf2pdf.css" />
 
     <link rel="stylesheet" href="css/styles/responsive.css" />
     <link rel="stylesheet" href="css/styles/viewer.css" />
 
     <!-- JavaScript Imports -->
     <script src="js/libs/interact.min.js" defer></script>
-    <script src="js/libs/CustomEase.min.js"></script>
-    <script src="js/libs/gsap.min.js"></script>
+        <script src="js/libs/CustomEase.min.js" defer></script>
+    <script src="js/libs/docxreplace.js" defer></script>
+    <script src="js/libs/gsap.min.js" defer></script>
     <script src="js/libs/Sortable.min.js" defer></script>
     <script src="js/libs/pdf-lib.min.js" defer></script>
-    <script src="js/libs/cropper.min.js"></script>
+    <script src="js/libs/cropper.min.js" defer></script>
     <script src="js/libs/chart.js" defer></script>
     <script src="js/libs/pdf.worker.min.js" defer></script>
     <script src="js/libs/pdf.min.js" defer></script>
     <script src="js/libs/jszip.min.js" defer></script>
     <script src="js/libs/mammoth.browser.min.js" defer></script>
     <script src="js/libs/html2pdf.bundle.min.js" defer></script>
+    <script src="js/libs/fuse.min.js" defer></script>
 
     <script src="js/core/eventHandlers.js" defer></script>
     <script src="js/core/main.js" defer></script>
@@ -69,16 +70,21 @@
     <script src="js/modules/documentation/pdfHandlers.js" defer></script>
     <script src="js/modules/emi-calculator/chartUtils.js" defer></script>
     <script src="js/modules/emi-calculator/emiCalculator.js" defer></script>
+    <script src="js/modules/wealth-simulator/fdCalculator.js" defer></script>
+    <script src="js/modules/wealth-simulator/rdCalculator.js" defer></script>
+    <script src="js/modules/wealth-simulator/apyCalculator.js" defer></script>
+    <script src="js/modules/wealth-simulator/ssyCalculator.js" defer></script>
+    <script src="js/modules/wealth-simulator/ppfCalculator.js" defer></script>
     <script src="js/modules/wealth-simulator/wealthSimulator.js" defer></script>
     <script src="js/modules/wealth-simulator/agePicker.js" defer></script>
     <script src="js/modules/cbs-hierarchy/cbsData.js" defer></script>
     <script src="js/modules/cbs-hierarchy/cbshierarchy.js" defer></script>
-    <script src="js/modules/snap/pdf-editor.js"></script>
-    <script src="js/modules/snap/ckycsnap.js"></script>
-    <script src="js/modules/snap/drop-handler.js"></script>
-    <script src="js/modules/snap/rtf2pdf.js"></script>
+    <script src="js/modules/snap/pdf-editor.js" defer></script>
+    <script src="js/modules/snap/ckycsnap.js" defer></script>
+    <script src="js/modules/snap/drop-handler.js" defer></script>
 
     <!-- Data Files -->
+    <script src="js/data/data.js" defer></script>
     <script src="js/data/raw1.js" defer></script>
     <script src="js/data/raw2.js" defer></script>
     <script src="js/data/raw3.js" defer></script>
@@ -410,7 +416,7 @@
           <button class="tab-button active" data-calculator="apy">
             APY Calculator
           </button>
-          <button class="tab-button" data-calculator="sukanya">
+          <button class="tab-button" data-calculator="ssy">
             Sukanya Samriddhi
           </button>
           <button class="tab-button" data-calculator="ppf">
@@ -639,131 +645,60 @@
         </div>
 
         <!-- Sukanya Samriddhi Calculator -->
-        <div id="sukanya-calculator" class="calculator-content">
-          <h2>Sukanya Samriddhi Yojana Calculator</h2>
-
-          <!-- Input Panel -->
-          <div class="input-panel">
-            <div class="input-fields">
-              <div class="input-group">
-                <label>Initial Age of Girl (Years):</label>
-                <input
-                  type="number"
-                  id="initial-age"
-                  placeholder="e.g., 5"
-                  min="0"
-                  max="10"
-                  value="5"
-                />
+        <div id="ssy-calculator" class="calculator-content">
+          <h3>Sukanya Samriddhi Yojana (SSY) Calculator</h3>
+          <div class="calculator-container ssy-layout">
+            <!-- Left Column: Inputs -->
+            <div class="form-section ssy-inputs">
+              <div class="form-group">
+                <label for="initial-age">Initial Age of Girl (Years):</label>
+                <input type="number" id="initial-age" value="1" min="0" max="10" />
               </div>
-              <div class="input-group">
-                <label>Deposit Frequency:</label>
+              <div class="form-group">
+                <label for="ssy-deposit-frequency">Deposit Frequency:</label>
                 <select id="ssy-deposit-frequency">
                   <option value="monthly">Monthly</option>
                   <option value="yearly">Yearly</option>
                 </select>
               </div>
-              <div class="input-group">
-                <label>Deposit Amount (₹):</label>
-                <input
-                  type="number"
-                  id="ssy-deposit"
-                  placeholder="e.g., 150000"
-                  min="250"
-                  max="150000"
-                  value="5000"
-                />
+              <div class="form-group">
+                <label for="ssy-deposit">Deposit Amount (₹):</label>
+                <input type="number" id="ssy-deposit" value="5000" min="250" step="100" />
               </div>
-              <div class="input-group">
-                <label>Interest Rate (%):</label>
-                <input
-                  type="number"
-                  id="ssy-interest-rate"
-                  placeholder="e.g., 8.2"
-                  value="8.2"
-                />
+              <div class="form-group">
+                <label for="ssy-interest-rate">Interest Rate (%):</label>
+                <input type="number" id="ssy-interest-rate" value="8.2" step="0.1" />
               </div>
-              <button id="calculate-ssy">Calculate SSY</button>
+              <button id="calculate-ssy" class="btn btn-primary">Calculate</button>
             </div>
 
-            <!-- Withdrawal Options -->
-            <div class="withdrawal-section">
-              <div class="withdrawal-cards">
-                <div class="withdrawal-card" id="education-card">
-                  <i class="fas fa-graduation-cap"></i>
-                  <button
-                    id="add-education-withdrawal"
-                    class="btn btn-education"
-                  >
-                    <div class="button-outer">
-                      <div class="button-inner">
-                        <span>Premature Withdrawal - Education</span>
-                      </div>
-                    </div>
-                  </button>
-                </div>
-                <div class="withdrawal-card" id="marriage-card">
-                  <i class="fas fa-ring"></i>
-                  <button
-                    id="add-marriage-withdrawal"
-                    class="btn btn-education"
-                  >
-                    <div class="button-outer">
-                      <div class="button-inner">
-                        <span>Premature Withdrawal - Marriage</span>
-                      </div>
-                    </div>
-                  </button>
-                </div>
-                <div class="withdrawal-card" id="premature-card">
-                  <i class="fas fa-exclamation-triangle"></i>
-                  <button
-                    id="add-premature-withdrawal"
-                    class="btn btn-education"
-                  >
-                    <div class="button-outer">
-                      <div class="button-inner">
-                        <span>Premature Closure</span>
-                      </div>
-                    </div>
-                  </button>
+            <!-- Right Column: Visuals & Results -->
+            <div class="ssy-visuals">
+              <div class="chart-container">
+                <canvas id="ssy-corpus-growth-chart"></canvas>
+              </div>
+              <div id="ssy-timeline-container" class="timeline-container" style="display:none;">
+                <div class="timeline-track"></div>
+                <div class="timeline-labels"></div>
+                <div class="timeline-events">
+                  <!-- Draggable icons will be added here by JS -->
                 </div>
               </div>
-              <div class="withdrawal-list">
-                <!-- <h4>Withdrawals: </h4> -->
-                <ul id="withdrawal-list"></ul>
+              <div id="ssy-event-buttons" class="event-buttons" style="display:none;">
+                <!-- Buttons to add events will be added here by JS -->
+              </div>
+              <div id="ssy-results" class="results-section">
                 <div class="result-item">
-                  <label>Funds Withdrawn:</label>
+                  <label>Final Maturity Value:</label>
+                  <span id="ssy-total-corpus">₹0.00</span>
+                </div>
+                <div class="result-item">
+                  <label>Total Funds Withdrawn:</label>
                   <span id="ssy-funds-withdrawn">₹0.00</span>
                 </div>
               </div>
             </div>
-
-            <!-- <div id="age-picker-container"></div> -->
-            <div class="age-picker-container">
-              <label class="age-picker-label">Age Picker for Withdrawals</label>
-              <div id="age-picker-container"></div>
-            </div>
-            <div style="display: none" id="selected-age-display">
-              Selected Age: <span id="selected-age">0</span>
-            </div>
           </div>
-
-          <!-- Chart -->
-          <div class="chart-container">
-            <canvas id="ssy-corpus-growth-chart"></canvas>
-          </div>
-
-          <!-- Results -->
-          <div class="result-card">
-            <h4>Results</h4>
-            <div class="result-item">
-              <label>Total Corpus at Maturity:</label>
-              <span id="ssy-total-corpus">₹0.00</span>
-            </div>
-          </div>
-
-          <!-- SSY Calculator Info Card -->
           <div class="info-card">
             <h4>Key Information:</h4>
             <ul class="key-info-list">
@@ -809,217 +744,6 @@
               </li>
             </ul>
           </div>
-        </div>
-
-        <!-- PPF Calculator -->
-        <div id="ppf-calculator" class="calculator-content">
-          <h3>Public Provident Fund (PPF)</h3>
-          <div class="input-panel">
-            <div class="input-fields">
-              <div class="input-group">
-                <label>Deposit Frequency:</label>
-                <select id="ppf-deposit-frequency">
-                  <option value="yearly">Yearly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
-              </div>
-              <div class="input-group">
-                <label>Deposit Amount (₹):</label>
-                <input
-                  type="number"
-                  id="ppf-deposit"
-                  placeholder="e.g., 150000"
-                  min="500"
-                  max="150000"
-                  value="150000"
-                />
-              </div>
-              <div class="input-group">
-                <label>Interest Rate (%):</label>
-                <input
-                  type="number"
-                  id="ppf-interest-rate"
-                  placeholder="e.g., 7.1"
-                  value="7.1"
-                />
-              </div>
-              <div class="input-group">
-                <label>Tenure (Years):</label>
-                <input
-                  type="number"
-                  id="ppf-tenure"
-                  placeholder="e.g., 15"
-                  min="15"
-                  step="5"
-                  value="15"
-                />
-              </div>
-              <button id="calculate-ppf">Calculate</button>
-            </div>
-
-            <!-- Withdrawal Options -->
-            <div class="withdrawal-section">
-              <div class="withdrawal-cards">
-                <div class="withdrawal-card">
-                  <button id="add-partial-withdrawal" class="btn btn-education">
-                    <div class="button-outer">
-                      <div class="button-inner">
-                        <span>Partial Withdrawal</span>
-                      </div>
-                    </div>
-                  </button>
-                </div>
-              </div>
-              <div class="withdrawal-list">
-                <h4>Withdrawals:</h4>
-                <ul id="ppf-withdrawal-list"></ul>
-                <div class="result-item">
-                  <label>Funds Withdrawn:</label>
-                  <span id="ppf-funds-withdrawn">₹0.00</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Chart -->
-          <div class="chart-container">
-            <canvas id="ppf-corpus-growth-chart"></canvas>
-          </div>
-
-          <!-- Results -->
-          <div class="result-card">
-            <h4>Results</h4>
-            <div class="result-item">
-              <label>Total Corpus at Maturity:</label>
-              <span id="ppf-total-corpus">₹0.00</span>
-            </div>
-            <div class="result-item">
-              <label>Interest Earned:</label>
-              <span id="ppf-interest-earned">₹0.00</span>
-            </div>
-          </div>
-
-          <!-- Info Card -->
-          <div class="info-card">
-            <h4>Key Information:</h4>
-            <ul class="key-info-list">
-              <li>
-                <strong>Minimum Tenure:</strong> 15 years (extendable in blocks
-                of 5 years).
-              </li>
-              <li>
-                <strong>Partial Withdrawal:</strong> Allowed after 6 years, up
-                to 50% of the balance at the end of the 4th year or the previous
-                year, whichever is lower.
-              </li>
-              <li>
-                <strong>Loan Against PPF:</strong>
-                <ul class="nested-list">
-                  <li>
-                    Available between the 3rd and 6th year of account opening.
-                  </li>
-                  <li>
-                    Maximum loan amount: 25% of the balance at the end of the
-                    2nd year preceding the loan application.
-                  </li>
-                  <li>Interest rate: 2% higher than the PPF interest rate.</li>
-                  <li>Repayment tenure: 36 months.</li>
-                </ul>
-              </li>
-              <li>
-                <strong>Tax Benefits:</strong> EEE (Exempt-Exempt-Exempt) under
-                Section 80C.
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Fixed Deposit Calculator -->
-        <div id="fd-calculator" class="calculator-content">
-          <h3>Fixed Deposit (FD)</h3>
-          <div class="input-fields">
-            <div class="input-group">
-              <label>Principal Amount (₹):</label>
-              <input
-                type="number"
-                id="fd-principal"
-                placeholder="e.g., 100000"
-              />
-            </div>
-            <div class="input-group">
-              <label>Interest Rate (%):</label>
-              <input
-                type="number"
-                id="fd-interest-rate"
-                placeholder="e.g., 6.5"
-              />
-            </div>
-            <div class="input-group">
-              <label>Tenure (Years):</label>
-              <input type="number" id="fd-tenure" placeholder="e.g., 5" />
-            </div>
-            <button id="calculate-fd">Calculate</button>
-          </div>
-          <div class="result-card">
-            <p>Maturity Amount: <span id="fd-maturity-amount">₹0.00</span></p>
-            <p>Interest Earned: <span id="fd-interest-earned">₹0.00</span></p>
-          </div>
-          <div class="info-card">
-            <h4>Key Information:</h4>
-            <ul>
-              <li>Premature Withdrawal: Penalty of 1-2% on interest.</li>
-              <li>
-                Tax Implications: Interest is taxable as per your income slab.
-              </li>
-              <li>
-                Senior Citizen Benefits: Higher interest rates for senior
-                citizens.
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Recurring Deposit Calculator -->
-        <div id="rd-calculator" class="calculator-content">
-          <h3>Recurring Deposit (RD)</h3>
-          <div class="input-fields">
-            <div class="input-group">
-              <label>Monthly Deposit (₹):</label>
-              <input type="number" id="rd-deposit" placeholder="e.g., 5000" />
-            </div>
-            <div class="input-group">
-              <label>Interest Rate (%):</label>
-              <input
-                type="number"
-                id="rd-interest-rate"
-                placeholder="e.g., 6.5"
-              />
-            </div>
-            <div class="input-group">
-              <label>Tenure (Years):</label>
-              <input type="number" id="rd-tenure" placeholder="e.g., 5" />
-            </div>
-            <button id="calculate-rd">Calculate</button>
-          </div>
-          <div class="result-card">
-            <p>Maturity Amount: <span id="rd-maturity-amount">₹0.00</span></p>
-            <p>Interest Earned: <span id="rd-interest-earned">₹0.00</span></p>
-          </div>
-          <div class="info-card">
-            <h4>Key Information:</h4>
-            <ul>
-              <li>Premature Withdrawal: Penalty of 1-2% on interest.</li>
-              <li>
-                Tax Implications: Interest is taxable as per your income slab.
-              </li>
-              <li>Flexibility: Tenure ranges from 6 months to 10 years.</li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Charts Section -->
-        <div class="chart-container">
-          <canvas id="wealth-chart"></canvas>
         </div>
       </div>
 
@@ -1103,6 +827,12 @@
                 >
                   ⏹️ Stop
                 </button>
+              </div>
+              <div class="preview-toggle-container" style="margin-top: 10px; text-align: center;">
+                <label for="toggle-preview">
+                  <input type="checkbox" id="toggle-preview" checked>
+                  Show Live Preview
+                </label>
               </div>
               <div id="visualization-container">
                 <canvas id="annealing-canvas"></canvas>

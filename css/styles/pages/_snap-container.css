@@ -140,6 +140,24 @@
     height: 150px;
 }
 
+/* CSS for PDF Drag and Drop */
+.pdf-iframe-wrapper.dragging {
+  opacity: 0.4;
+  border: 2px dashed #ccc;
+}
+
+.pdf-drag-placeholder {
+  background-color: #e0e0e0;
+  border: 2px dashed #999;
+  border-radius: 8px;
+  margin: 10px;
+  box-sizing: border-box;
+}
+
+.pdf-iframe-wrapper.no-drag {
+  cursor: not-allowed;
+}
+
 @media (max-width: 768px) {
     .layout {
         flex-direction: column;

@@ -140,3 +140,68 @@
   text-align: center;
   font-style: italic;
 }
+
+/* PDF Sidebar - A more modern approach */
+#pdfSidebar {
+    position: fixed;
+    top: 60px; /* Adjust based on your header's height */
+    right: 0;
+    width: 340px;
+    height: calc(100% - 60px); /* Adjust based on your header's height */
+    background-color: #fff;
+    border-left: 1px solid #e9ecef;
+    box-shadow: -3px 0 15px rgba(0, 0, 0, 0.05);
+    transform: translateX(100%); /* Start off-screen */
+    transition: transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1);
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+}
+
+#pdfSidebar.active {
+    transform: translateX(0); /* Slide in */
+}
+
+/* Main container adjustments when sidebar is active */
+#container {
+    transition: margin-right 0.35s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* This class will be toggled on the BODY element */
+body.sidebar-active #container {
+    margin-right: 340px; /* Push the main content to the left */
+}
+
+/* Sidebar Toggle Button */
+#sidebarToggle {
+    position: absolute;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    background-color: #fff;
+    color: #007bff;
+    border: 1px solid #e9ecef;
+    border-right: none;
+    border-radius: 8px 0 0 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    box-shadow: -3px 3px 10px rgba(0,0,0,0.07);
+    transition: all 0.2s ease;
+}
+
+#sidebarToggle:hover {
+    background-color: #007bff;
+    color: #fff;
+    border-color: #007bff;
+}
+
+/* Ensure the sidebar content is scrollable if it overflows */
+/* Assuming your sidebar has an inner content wrapper */
+#pdfSidebar .sidebar-content-wrapper {
+    padding: 20px;
+    overflow-y: auto;
+    height: 100%;
+}

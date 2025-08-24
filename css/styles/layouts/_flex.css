@@ -8,7 +8,7 @@
     background: #fff;
     text-align: center;
     height: fit-content;
-    max-width: 700px;
+    max-width: none;
 }
 
 .content {
@@ -21,13 +21,6 @@
     display: flex;
     gap: 20px;
     margin-bottom: 20px;
-}
-
-.withdrawal-cards {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 15px;
 }
 
 .bulk-actions {
@@ -43,10 +36,6 @@
 
 @media (max-width: 768px) {
     .input-panel {
-        flex-direction: column;
-    }
-    
-    .withdrawal-cards {
         flex-direction: column;
     }
 }

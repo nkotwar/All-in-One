@@ -12,12 +12,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     sidebarToggle.addEventListener('click', function () {
         pdfSidebar.classList.toggle('active');
+        // --- NEW: Toggle class on the body for layout adjustments ---
+        document.body.classList.toggle('sidebar-active');
     });
 
     // Add touch event listener for sidebar toggle
     sidebarToggle.addEventListener('touchstart', function (event) {
         event.preventDefault(); // Prevent default touch behavior
         pdfSidebar.classList.toggle('active');
+        // --- NEW: Toggle class on the body for layout adjustments ---
+        document.body.classList.toggle('sidebar-active');
     });
 
     // Toggle menu on hamburger click
@@ -64,11 +68,12 @@ document.addEventListener('DOMContentLoaded', function () {
     
             // Show or hide the PDF sidebar based on the active section
             if (targetTab === 'documentation') {
-                pdfSidebar.style.display = 'block';
-                container.style.maxWidth = "700px";
+                pdfSidebar.style.display = 'flex'; // Use flex to match new CSS
             } else {
                 pdfSidebar.style.display = 'none';
-                container.style.maxWidth = "none";
+                // --- NEW: Ensure sidebar class is removed when leaving the tab ---
+                pdfSidebar.classList.remove('active');
+                document.body.classList.remove('sidebar-active');
             }
 
             // NEW: Focus on CBS search when that tab is selected
@@ -90,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize the default section (Documentation)
     document.getElementById('documentation').classList.add('active');
-    pdfSidebar.style.display = 'block'; // Show the PDF sidebar by default
+    pdfSidebar.style.display = 'flex'; // Show the PDF sidebar by default
 
 
     document.addEventListener("mousemove", (e) => {

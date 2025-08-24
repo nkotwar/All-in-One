@@ -7,7 +7,6 @@ function initEMICalculator() {
     }
 
     // Initialize variables
-    let loanChart = null;
     let isInterestServed = false; // Default to false (interest not served during moratorium)
     let currentEMI = 0; // Track the current EMI value
     let originalNumberOfPayments = 0; // Track the original number of payments
@@ -42,6 +41,17 @@ function initEMICalculator() {
     const toggleInterestServedCheckbox = document.getElementById('toggle-interest-served');
     const emiPostMoratoriumCard = document.getElementById('emi-post-moratorium-card');
 
+    // Group DOM elements for easier passing
+    const domElements = {
+        loanAmountInput, interestRateInput, loanTenureInput, moratoriumInput,
+        netMonthlyIncomeInput, existingEmiInput, calculateEmiButton,
+        recalculateFinanceButton, emiSlider, newEmiDisplay, emiSavedDisplay,
+        newTenureDisplay, loanChartCanvas, nmiEmiRatioDisplay, maxEmiCapacityDisplay,
+        emiPostMoratoriumDisplay, emiMoratoriumDisplay, maxLoanEligibilityDisplay,
+        adjustedEmiCapacityDisplay, progressBar, emiValues, interestServedToggle,
+        toggleInterestServedCheckbox, emiPostMoratoriumCard
+    };
+
     // Check if all required elements exist
     if (!loanAmountInput || !interestRateInput || !loanTenureInput || !moratoriumInput || !netMonthlyIncomeInput || !existingEmiInput || !calculateEmiButton || !emiSlider || !newEmiDisplay || !emiSavedDisplay || !newTenureDisplay || !loanChartCanvas || !nmiEmiRatioDisplay || !maxEmiCapacityDisplay || !emiPostMoratoriumDisplay || !emiMoratoriumDisplay) {
         console.error("One or more EMI Calculator elements not found in the DOM.");
@@ -58,136 +68,76 @@ function initEMICalculator() {
     toggleInterestServedCheckbox.addEventListener('change', function () {
         isInterestServed = toggleInterestServedCheckbox.checked; // Update isInterestServed based on checkbox state
         localStorage.setItem('isInterestServed', isInterestServed); // Save state to localStorage
-    
-        // Get current input values
-        const principal = parseFloat(loanAmountInput.value); // Loan amount in rupees
-        const rate = parseFloat(interestRateInput.value); // Annual interest rate
-        const tenureYears = parseFloat(loanTenureInput.value); // Loan tenure in years
-        const tenureMonths = tenureYears * 12;
-        const moratoriumMonths = parseFloat(moratoriumInput.value); // Moratorium in months
-        const netMonthlyIncome = parseFloat(netMonthlyIncomeInput.value); // Net monthly income
-        const existingEmi = parseFloat(existingEmiInput.value); // Existing EMI
-    
-        // Recalculate Max Loan Eligibility
-        const maxEmiCapacity = calculateMaxEMICapacity(netMonthlyIncome, existingEmi, calculateNMIEMIRatio(netMonthlyIncome));
-        const maxLoanEligibility = calculateMaxLoanEligibility(
-            maxEmiCapacity,
-            rate,
-            tenureMonths,
-            moratoriumMonths,
-            isInterestServed,
-            principal
-        );
-    
-        // Update Max Loan Eligibility display
-        maxLoanEligibilityDisplay.textContent = `₹${maxLoanEligibility.toFixed(2)}`;
-    
-        // Recalculate EMI and other metrics
-        calculateEmiButton.click();
+        calculateAndDisplay(); // Recalculate everything
     });
 
-    calculateEmiButton.addEventListener('click', function () {
-        const principal = parseFloat(loanAmountInput.value); // Loan amount in rupees
-        const rate = parseFloat(interestRateInput.value); // Annual interest rate
-        const tenureYears = parseFloat(loanTenureInput.value); // Loan tenure in years
-        const moratoriumMonths = parseFloat(moratoriumInput.value); // Moratorium in months
-        const netMonthlyIncome = parseFloat(netMonthlyIncomeInput.value); // Net monthly income
-        const existingEmi = parseFloat(existingEmiInput.value); // Existing EMI
+    // Refactored main calculation and display logic
+    function getLoanInputs() {
+        return {
+            principal: parseFloat(loanAmountInput.value.replace(/,/g, '')) || 0,
+            rate: parseFloat(interestRateInput.value) || 0,
+            tenureYears: parseFloat(loanTenureInput.value) || 0,
+            moratoriumMonths: parseFloat(moratoriumInput.value) || 0,
+            netMonthlyIncome: parseFloat(netMonthlyIncomeInput.value) || 0,
+            existingEmi: parseFloat(existingEmiInput.value) || 0,
+        };
+    }
 
-        // Validate inputs
-        if (isNaN(principal) || isNaN(rate) || isNaN(tenureYears) || isNaN(moratoriumMonths) || isNaN(netMonthlyIncome) || isNaN(existingEmi)) {
-            alert('Please enter valid values for all fields.');
+    function calculateMetrics(inputs) {
+        const tenureMonths = inputs.tenureYears * 12;
+        const { emi, numberOfPayments } = calculateEMI(inputs.principal, inputs.rate, tenureMonths, inputs.moratoriumMonths, isInterestServed);
+        currentEMI = emi;
+        originalNumberOfPayments = numberOfPayments;
+
+        const nmiEmiRatio = calculateNMIEMIRatio(inputs.netMonthlyIncome);
+        const maxEmiCapacity = calculateMaxEMICapacity(inputs.netMonthlyIncome, inputs.existingEmi, nmiEmiRatio);
+        const emiPostMoratorium = calculateEMIPostMoratorium(inputs.principal, inputs.rate, tenureMonths, inputs.moratoriumMonths);
+        const maxLoanEligibility = calculateMaxLoanEligibility(maxEmiCapacity, inputs.rate, tenureMonths, inputs.moratoriumMonths, isInterestServed, inputs.principal);
+
+        const monthlyRate = inputs.rate / 12 / 100;
+        let emiDuringMoratorium = isInterestServed ? inputs.principal * monthlyRate : 0;
+        if (inputs.moratoriumMonths === 0) {
+            emiDuringMoratorium = emi;
+        }
+
+        return {
+            ...inputs,
+            tenureMonths,
+            emi,
+            numberOfPayments,
+            nmiEmiRatio,
+            maxEmiCapacity,
+            emiPostMoratorium,
+            maxLoanEligibility,
+            emiDuringMoratorium,
+        };
+    }
+
+    function calculateAndDisplay() {
+        const inputs = getLoanInputs();
+
+        // Basic validation
+        if (isNaN(inputs.principal) || isNaN(inputs.rate) || isNaN(inputs.tenureYears)) {
+            alert('Please enter valid values for Loan Amount, Interest Rate, and Tenure.');
             return;
         }
 
-        // Convert tenure from years to months
-        const tenureMonths = tenureYears * 12;
-
-        // Calculate EMI (with moratorium and interest served option)
-        const { emi, numberOfPayments } = calculateEMI(principal, rate, tenureMonths, moratoriumMonths, isInterestServed);
-        currentEMI = emi;
-        originalNumberOfPayments = numberOfPayments;
-        
-
-        // Update EMI slider
-        emiSlider.min = currentEMI.toFixed(2);
-        emiSlider.max = (currentEMI * 3).toFixed(2);
-        emiSlider.value = currentEMI.toFixed(2);
-
-        // Display EMI
-        newEmiDisplay.textContent = `₹${currentEMI.toFixed(2)}`;
-        emiSavedDisplay.textContent = '₹0.00';
-        newTenureDisplay.textContent = '0 months';
-
-        // Calculate additional metrics
-        const nmiEmiRatio = calculateNMIEMIRatio(netMonthlyIncome);
-        const maxEmiCapacity = calculateMaxEMICapacity(netMonthlyIncome, existingEmi, nmiEmiRatio);
-        const emiPostMoratorium = calculateEMIPostMoratorium(principal, rate, tenureMonths, moratoriumMonths);
-        const maxLoanEligibility = calculateMaxLoanEligibility(
-            maxEmiCapacity,
-            rate,
-            tenureMonths,
-            moratoriumMonths,
-            isInterestServed,
-            principal
-        );
-
-        // Calculate EMI during Moratorium
-        const monthlyRate = rate / 12 / 100;
-        let emiDuringMoratorium = isInterestServed ? principal * monthlyRate : 0;
-        let emiLabel = 'EMI'; // Default label
-
-        if (moratoriumMonths > 0) {
-            emiLabel = 'EMI during Moratorium'; // Update label if moratorium exists
-        } else {
-            emiDuringMoratorium = emi; // Use regular EMI if no moratorium
-        }
-        // Update the EMI label and value
-        document.getElementById('emi-label').textContent = emiLabel;
-        emiMoratoriumDisplay.textContent = `₹${emiDuringMoratorium.toFixed(2)}`;
-
-        // Display additional metrics
-        nmiEmiRatioDisplay.textContent = `${nmiEmiRatio.toFixed(2)}%`;
-        maxEmiCapacityDisplay.textContent = `₹${maxEmiCapacity.toFixed(2)}`;
-        emiPostMoratoriumDisplay.textContent = `₹${emiPostMoratorium.toFixed(2)}`;
-        emiMoratoriumDisplay.textContent = `₹${emiDuringMoratorium.toFixed(2)}`; // Updated to show EMI during Moratorium
-        maxLoanEligibilityDisplay.textContent = `₹${maxLoanEligibility.toFixed(2)}`;
-        adjustedEmiCapacityDisplay.value = maxEmiCapacity.toFixed(2);
-
-        // Update progress bar for NMI/EMI Ratio
-        progressBar.style.width = `${nmiEmiRatio}%`;
-
-        // Color coding for EMI values
-        emiValues.forEach(value => {
-            const emiAmount = parseFloat(value.textContent.replace('₹', '').replace(',', ''));
-            if (emiAmount > maxEmiCapacity) {
-                value.style.color = '#e74c3c'; // Red for exceeding limit
-            } else {
-                value.style.color = '#2ecc71'; // Green for within limit
-            }
-        });
-
-        // Show/Hide EMI Post Moratorium card based on moratorium
-        if (moratoriumMonths > 0) {
-            emiPostMoratoriumCard.style.display = 'block';
-            interestServedToggle.style.display = 'block'; // Show the toggle switch
-        } else {
-            emiPostMoratoriumCard.style.display = 'none';
-            interestServedToggle.style.display = 'none'; // Hide the toggle switch
-        }
-    
-        // Update loan chart (with moratorium and interest served option)
-        updateLoanChart(principal, rate, tenureMonths, currentEMI, moratoriumMonths, isInterestServed);
-        updateChart('emi', { newEmi: currentEMI, interestSaved: 0, emisSaved: 0 });
-
-        // Generate and display the amortization table
         try {
-            validateEMI(principal, rate, emi, moratoriumMonths, isInterestServed);
-            generateAmortizationTable(principal, rate, tenureMonths, currentEMI, moratoriumMonths, isInterestServed);
+            const metrics = calculateMetrics(inputs);
+            validateEMI(metrics.principal, metrics.rate, metrics.emi, metrics.moratoriumMonths, isInterestServed);
+            
+            // Call the new UI update function from chartUtils.js
+            updateCalculatorUI(metrics, domElements, isInterestServed);
+            
+            // Generate the amortization table separately
+            generateAmortizationTable(metrics.principal, metrics.rate, metrics.tenureMonths, metrics.emi, metrics.moratoriumMonths, isInterestServed);
+
         } catch (error) {
             alert(error.message);
         }
-    });
+    }
+
+    calculateEmiButton.addEventListener('click', calculateAndDisplay);
     
     recalculateFinanceButton.addEventListener('click', function () {
         const adjustedEmiCapacity = parseFloat(document.getElementById('adjusted-emi-capacity').value);
@@ -501,7 +451,7 @@ function initEMICalculator() {
     }
 
     function updateAmortizationSchedule() {
-        const principal = parseFloat(loanAmountInput.value);
+        const principal = parseFloat(loanAmountInput.value.replace(/,/g, ''));
         const rate = parseFloat(interestRateInput.value);
         const emi = parseFloat(emiSlider.value);
         const moratoriumMonths = parseFloat(moratoriumInput.value);
@@ -511,226 +461,47 @@ function initEMICalculator() {
             return;
         }
     
-        const monthlyRate = rate / 12 / 100;
-        const minimumEMI = principal * monthlyRate;
-    
-        if (emi < minimumEMI) {
-            alert(`EMI cannot be less than ₹${minimumEMI.toFixed(2)} (minimum EMI to cover interest).`);
-            emiSlider.value = minimumEMI.toFixed(2);
-            return;
-        }
-    
         try {
+            validateEMI(principal, rate, emi, moratoriumMonths, isInterestServed);
+    
             const { numberOfPayments, totalInterest } = calculateAdjustedTenureAndInterest(
-                principal,
-                rate,
-                emi,
-                moratoriumMonths,
-                isInterestServed // Use the isInterestServed variable instead of interestServedMoratorium
+                principal, rate, emi, moratoriumMonths, isInterestServed
             );
     
-            const originalEmi = currentEMI;
-            const interestSaved = (originalEmi * originalNumberOfPayments) - (emi * numberOfPayments);
+            const originalTotalInterest = currentEMI * originalNumberOfPayments;
+            const newTotalInterest = emi * numberOfPayments;
+            const interestSaved = originalTotalInterest - newTotalInterest;
             const emisSaved = originalNumberOfPayments - numberOfPayments;
     
-            newEmiDisplay.textContent = `₹${emi.toFixed(2)}`;
-            emiSavedDisplay.textContent = `₹${interestSaved.toFixed(2)}`;
-            newTenureDisplay.textContent = `${emisSaved} months`;
+            // Create a metrics object for the UI update function
+            const metrics = {
+                principal,
+                rate,
+                tenureMonths: originalNumberOfPayments, // Original tenure for context
+                numberOfPayments, // New tenure
+                emi,
+                moratoriumMonths,
+                interestSaved,
+                emisSaved,
+                // Pass existing metrics that don't change with the slider
+                nmiEmiRatio: parseFloat(nmiEmiRatioDisplay.textContent),
+                maxEmiCapacity: parseFloat(maxEmiCapacityDisplay.textContent.replace('₹', '')),
+                emiPostMoratorium: parseFloat(emiPostMoratoriumDisplay.textContent.replace('₹', '')),
+                maxLoanEligibility: parseFloat(maxLoanEligibilityDisplay.textContent.replace('₹', '')),
+                emiDuringMoratorium: parseFloat(emiMoratoriumDisplay.textContent.replace('₹', '')),
+            };
     
-            // Update the loan chart
-            updateLoanChart(principal, rate, numberOfPayments, emi, moratoriumMonths, isInterestServed); // Use isInterestServed here
+            // Call the central UI update function
+            updateCalculatorUI(metrics, domElements, isInterestServed, true);
     
-            // Update the chart with the new EMI, interest saved, and EMIs saved
-            updateChart('emi', { newEmi: emi, interestSaved, emisSaved });
+            // Generate the amortization table with the new tenure
+            generateAmortizationTable(principal, rate, numberOfPayments, emi, moratoriumMonths, isInterestServed);
     
-            // Generate the amortization table
-            try {
-                validateEMI(principal, rate, emi, moratoriumMonths, isInterestServed);
-                generateAmortizationTable(principal, rate, numberOfPayments, emi, moratoriumMonths, isInterestServed);
-            } catch (error) {
-                alert(error.message);
-                emiSlider.value = currentEMI.toFixed(2);
-            }
         } catch (error) {
             alert(error.message);
+            // Reset slider to the last valid EMI on error
             emiSlider.value = currentEMI.toFixed(2);
+            newEmiDisplay.textContent = `₹${currentEMI.toFixed(2)}`;
         }
-    }
-
-    function updateLoanChart(principal, rate, tenureMonths, emi, moratoriumMonths = 0, isInterestServed = false) {
-        const monthlyRate = rate / 12 / 100;
-        let remainingPrincipal = principal;
-        let labels = [];
-        let principalData = [];
-        let interestData = [];
-        let remainingBalanceData = [];
-    
-        // Handle moratorium period
-        if (moratoriumMonths > 0) {
-            for (let i = 1; i <= moratoriumMonths; i++) {
-                const interest = remainingPrincipal * monthlyRate;
-    
-                if (isInterestServed) {
-                    // Borrower serves interest during moratorium
-                    labels.push(`Month ${i} (Moratorium - Interest Paid)`);
-                    principalData.push(0); // No principal paid during moratorium
-                    interestData.push(interest); // Interest is paid
-                    remainingBalanceData.push(remainingPrincipal); // Principal remains unchanged
-                } else {
-                    // Borrower does not serve interest during moratorium
-                    remainingPrincipal += interest; // Add interest to the principal
-                    labels.push(`Month ${i} (Moratorium - Interest Accrued)`);
-                    principalData.push(0); // No principal paid during moratorium
-                    interestData.push(interest); // Interest is accrued
-                    remainingBalanceData.push(remainingPrincipal); // Principal increases
-                }
-            }
-        }
-    
-        // Handle repayment period
-        for (let i = 1; i <= tenureMonths; i++) {
-            const interest = remainingPrincipal * monthlyRate;
-            let principalPaid = emi - interest;
-    
-            // Adjust the final EMI to ensure the Outstanding Balance does not go negative
-            if (remainingPrincipal - principalPaid < 0) {
-                principalPaid = remainingPrincipal; // Adjust principal paid to close the loan
-            }
-    
-            remainingPrincipal -= principalPaid;
-            labels.push(`Month ${i + moratoriumMonths}`);
-            principalData.push(principalPaid);
-            interestData.push(interest);
-            remainingBalanceData.push(remainingPrincipal);
-        }
-    
-        // Destroy the existing chart instance if it exists
-        if (loanChart && typeof loanChart.destroy === 'function') {
-            loanChart.destroy();
-        }
-    
-        // Ensure Chart.js is loaded before creating a new chart
-        if (typeof Chart === 'undefined') {
-            console.error("Chart.js is not loaded. Please include Chart.js in your project.");
-            return;
-        }
-    
-        // Create a new chart instance
-        loanChart = new Chart(loanChartCanvas, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Principal Paid',
-                        data: principalData,
-                        borderColor: '#3498db',
-                        backgroundColor: 'rgba(52, 152, 219, 0.2)',
-                        fill: true,
-                        pointRadius: 3,
-                        pointHoverRadius: 5,
-                        yAxisID: 'y-axis-pi',
-                    },
-                    {
-                        label: 'Interest Paid',
-                        data: interestData,
-                        borderColor: '#e74c3c',
-                        backgroundColor: 'rgba(231, 76, 60, 0.2)',
-                        fill: true,
-                        pointRadius: 3,
-                        pointHoverRadius: 5,
-                        yAxisID: 'y-axis-pi',
-                    },
-                    {
-                        label: 'Outstanding',
-                        data: remainingBalanceData,
-                        borderColor: '#2ecc71',
-                        backgroundColor: 'rgba(46, 204, 113, 0.2)',
-                        fill: true,
-                        pointRadius: 3,
-                        pointHoverRadius: 5,
-                        yAxisID: 'y-axis-balance',
-                    },
-                ],
-            },
-            options: {
-                responsive: true,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Loan Repayment Over Time',
-                        font: {
-                            size: 18,
-                        },
-                    },
-                    subtitle: {
-                        display: true,
-                        text: 'Breakdown of Principal, Interest, and Outstanding',
-                        font: {
-                            size: 14,
-                        },
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function (context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed.y !== null) {
-                                    label += `₹${context.parsed.y.toFixed(2)}`;
-                                }
-                                return label;
-                            },
-                        },
-                    },
-                    legend: {
-                        display: true,
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            pointStyle: 'circle',
-                            padding: 20,
-                        },
-                    },
-                },
-                scales: {
-                    x: {
-                        display: true,
-                        title: {
-                            display: true,
-                            text: 'Months',
-                        },
-                    },
-                    'y-axis-pi': {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
-                        title: {
-                            display: true,
-                            text: 'Principal / Interest Paid (₹)',
-                        },
-                        beginAtZero: true,
-                    },
-                    'y-axis-balance': {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        title: {
-                            display: true,
-                            text: 'Outstanding (₹)',
-                        },
-                        beginAtZero: true,
-                        grid: {
-                            drawOnChartArea: false,
-                        },
-                    },
-                },
-            },
-        });
     }
 }

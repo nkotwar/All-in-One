@@ -158,22 +158,34 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 2000);
   });
 
-  // Update sliders event listeners
+  // --- OPTIMIZATION: Debounce function ---
+  function debounce(func, delay) {
+    let timeout;
+    return function (...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), delay);
+    };
+  }
+
+  // Debounced version of handleSliderChange for better performance
+  const debouncedHandleSliderChange = debounce(handleSliderChange, 250);
+
+  // Update sliders event listeners to use the debounced function
   upscaleSlider.addEventListener("input", function () {
     upscaleValue.textContent = `${parseFloat(upscaleSlider.value).toFixed(1)}x`;
-    handleSliderChange();
+    debouncedHandleSliderChange();
   });
 
   noiseSlider.addEventListener("input", function () {
     noiseValue.textContent = `${parseFloat(noiseSlider.value).toFixed(2)}%`;
-    handleSliderChange();
+    debouncedHandleSliderChange();
   });
 
   blurSlider.addEventListener("input", function () {
     if (!isBlurLocked) {
       // Only update if the slider is unlocked
       blurValue.textContent = `${parseFloat(blurSlider.value).toFixed(2)}px`;
-      handleSliderChange();
+      debouncedHandleSliderChange();
     }
   });
 
@@ -181,7 +193,7 @@ document.addEventListener("DOMContentLoaded", () => {
     colorDepthValue.textContent = `${parseFloat(colorDepthSlider.value).toFixed(
       2
     )}-bit`;
-    handleSliderChange();
+    debouncedHandleSliderChange();
   });
 
   // Event listener for quality slider
@@ -189,8 +201,20 @@ document.addEventListener("DOMContentLoaded", () => {
     qualityValue.textContent = `${Math.round(
       parseFloat(qualitySlider.value) * 100
     ).toFixed(2)}%`; // Update quality display
-    handleSliderChange(); // Call the unified function
+    debouncedHandleSliderChange(); // Call the unified function
   });
+
+  function getProcessedCanvas(sourceCanvas, params) {
+    if (!sourceCanvas || sourceCanvas.width === 0 || sourceCanvas.height === 0) {
+      console.error("Invalid source canvas for processing.");
+      // Return a dummy canvas to avoid further errors
+      return document.createElement("canvas");
+    }
+    const upscaledImage = upscaleImage(sourceCanvas, params.upscaleFactor);
+    const noisyImage = addNoise(upscaledImage, params.noiseLevel);
+    const blurredImage = applyBlur(noisyImage, params.blurLevel);
+    return reduceColorDepth(blurredImage, params.bitDepth);
+  }
 
   function costFunction(currentFileSizeKB, desiredFileSizeKB) {
     return Math.abs(currentFileSizeKB - desiredFileSizeKB);
@@ -286,7 +310,7 @@ document.addEventListener("DOMContentLoaded", () => {
       bitDepth: 1, // Minimum color depth
       quality: 0.01, // Minimum quality
     };
-    const minFileSizeKB = getFileSize(minParams);
+    const minFileSizeKB = getFileSize(croppedImage, minParams);
 
     // Calculate maximum file size (highest quality, max noise, max upscale, least blur, max color depth)
     const maxParams = {
@@ -296,7 +320,7 @@ document.addEventListener("DOMContentLoaded", () => {
       bitDepth: 24, // Maximum color depth
       quality: 1, // Maximum quality
     };
-    const maxFileSizeKB = getFileSize(maxParams);
+    const maxFileSizeKB = getFileSize(croppedImage, maxParams);
 
     // Update the file size range display
     const fileSizeRange = document.getElementById("file-size-range");
@@ -347,8 +371,9 @@ document.addEventListener("DOMContentLoaded", () => {
       touchDragZoom: false, // Disable touch drag zoom (optional)
       cropend: function () {
         // Calculate the file size range when the user is done cropping
-        calculateFileSizeRange();
         handleSliderChange();
+        // Delay to ensure cropper is ready before calculating range
+        setTimeout(calculateFileSizeRange, 100);
       },
     });
 
@@ -403,16 +428,20 @@ document.addEventListener("DOMContentLoaded", () => {
         // Initialize the cropper
         initCropper(image);
 
-        // Calculate the file size range
-        setTimeout(() => {
-          calculateFileSizeRange();
-        }, 100);
+        // Calculate the file size range once the image is loaded and cropper is ready
+        image.onload = () => {
+          setTimeout(() => {
+            calculateFileSizeRange();
+            handleSliderChange(); // Initial preview
+          }, 150); // A small delay to ensure cropper is fully initialized
+        };
       };
       reader.readAsDataURL(file);
     }
   };
 
   function handleSliderChange() {
+    if (!cropper) return;
     const croppedImage = cropper.getCroppedCanvas();
     if (!croppedImage || !(croppedImage instanceof HTMLCanvasElement)) {
       console.error("Cropper did not return a valid canvas.");
@@ -427,18 +456,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const quality = parseFloat(qualitySlider.value);
 
     // Apply all effects
-    const upscaledImage = upscaleImage(croppedImage, upscaleFactor);
-    const noisyImage = addNoise(upscaledImage, noiseLevel);
-    const blurredImage = applyBlur(noisyImage, blurLevel);
-    const colorDepthImage = reduceColorDepth(blurredImage, bitDepth);
+    const processedCanvas = getProcessedCanvas(croppedImage, {
+      upscaleFactor,
+      noiseLevel,
+      blurLevel,
+      bitDepth,
+    });
 
     // Update the iteration preview
     const preview = document.getElementById("iteration-preview");
-    preview.src = colorDepthImage.toDataURL("image/jpeg", quality);
-    preview.style.display = "block";
-
-    // Convert the image to JPEG with the selected quality
-    const imageUrl = colorDepthImage.toDataURL("image/jpeg", quality);
+    const imageUrl = processedCanvas.toDataURL("image/jpeg", quality);
+    
+    // --- FIX: Only show preview if checkbox is checked ---
+    const showPreview = document.getElementById("toggle-preview").checked;
+    if (showPreview) {
+      preview.src = imageUrl;
+      preview.style.display = "block";
+    } else {
+      preview.style.display = "none";
+    }
 
     // Calculate file size
     const fileSizeKB = getFileSizeKB(imageUrl);
@@ -454,14 +490,9 @@ document.addEventListener("DOMContentLoaded", () => {
     qualityValue.textContent = `${Math.round(quality * 100).toFixed(2)}%`;
   }
 
-  function getFileSize(params) {
-    const croppedImage = cropper.getCroppedCanvas();
-    const upscaledImage = upscaleImage(croppedImage, params.upscaleFactor);
-    const noisyImage = addNoise(upscaledImage, params.noiseLevel);
-    const blurredImage = applyBlur(noisyImage, params.blurLevel);
-    const colorDepthImage = reduceColorDepth(blurredImage, params.bitDepth);
-
-    const imageUrl = colorDepthImage.toDataURL("image/jpeg", params.quality);
+  function getFileSize(sourceCanvas, params) {
+    const processedCanvas = getProcessedCanvas(sourceCanvas, params);
+    const imageUrl = processedCanvas.toDataURL("image/jpeg", params.quality);
     return getFileSizeKB(imageUrl);
   }
 
@@ -535,11 +566,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function getProcessedImage(params, quality) {
     const croppedImage = cropper.getCroppedCanvas();
-    const upscaledImage = upscaleImage(croppedImage, params.upscaleFactor);
-    const noisyImage = addNoise(upscaledImage, params.noiseLevel);
-    const blurredImage = applyBlur(noisyImage, params.blurLevel);
-    const colorDepthImage = reduceColorDepth(blurredImage, params.bitDepth);
-    return colorDepthImage.toDataURL("image/jpeg", quality);
+    const processedCanvas = getProcessedCanvas(croppedImage, params);
+    return processedCanvas.toDataURL("image/jpeg", quality);
   }
 
   // Function to update the download button
@@ -593,6 +621,16 @@ document.addEventListener("DOMContentLoaded", () => {
     // Reset the download button at the start of the iteration
     resetDownloadButton();
 
+    const croppedCanvas = cropper.getCroppedCanvas();
+    if (!croppedCanvas || croppedCanvas.width === 0) {
+      alert(
+        "Could not get cropped image. Please try adjusting the crop area."
+      );
+      freezeSliders(false);
+      isSearching = false;
+      return;
+    }
+
     const initialParams = {
       upscaleFactor: parseFloat(upscaleSlider.value),
       noiseLevel: parseFloat(noiseSlider.value),
@@ -610,18 +648,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let currentParams = initialParams;
     let currentCost = costFunction(
-      getFileSize(currentParams),
+      getFileSize(croppedCanvas, currentParams),
       desiredFileSizeKB
     );
 
     let bestParams = { ...currentParams };
-    let bestFileSizeKB = getFileSize(bestParams); // Track the actual best file size
+    let bestFileSizeKB = getFileSize(croppedCanvas, bestParams); // Track the actual best file size
     let bestCost = currentCost;
 
     let temperature = 1.0; // Initial temperature
     const coolingRate = 0.99; // Cooling rate
 
     const points = []; // Store points for visualization
+    const showPreview = document.getElementById("toggle-preview").checked;
 
     // Function to draw the progress visualization
     function drawProgress(
@@ -690,9 +729,11 @@ document.addEventListener("DOMContentLoaded", () => {
       ctx.fillText(`Pixel Spectrum: ${currentParams.bitDepth}-bit`, 10, 140);
 
       // Update the image preview
-      const preview = document.getElementById("iteration-preview");
-      preview.src = imageUrl; // Use the image URL with quality applied
-      preview.style.display = "block";
+      if (showPreview) {
+        const preview = document.getElementById("iteration-preview");
+        preview.src = imageUrl; // Use the image URL with quality applied
+        preview.style.display = "block";
+      }
 
       // Update the download button
       updateDownloadButton(imageUrl, currentFileSizeKB);
@@ -704,10 +745,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Generate a neighbor
       const neighborParams = getNeighbor(currentParams);
-      const neighborCost = costFunction(
-        getFileSize(neighborParams),
-        desiredFileSizeKB
-      );
+      const neighborFileSize = getFileSize(croppedCanvas, neighborParams);
+      const neighborCost = costFunction(neighborFileSize, desiredFileSizeKB);
 
       // Accept the neighbor if it's better or with a certain probability
       if (
@@ -721,7 +760,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Update the best solution
       if (currentCost < bestCost) {
         bestParams = { ...currentParams };
-        bestFileSizeKB = getFileSize(bestParams); // Update the actual best file size
+        bestFileSizeKB = getFileSize(croppedCanvas, bestParams); // Update the actual best file size
         bestCost = currentCost;
       }
 
@@ -731,12 +770,12 @@ document.addEventListener("DOMContentLoaded", () => {
       // Store points for visualization
       points.push({ x: i, y: currentCost });
 
-      // Draw the progress visualization
-      const quality = parseFloat(qualitySlider.value); // Get current quality value
-      const imageUrl = getProcessedImage(currentParams, quality); // Apply quality
+      // Generate image and draw progress
+      const currentFileSize = getFileSize(croppedCanvas, currentParams);
+      const imageUrl = getProcessedImage(currentParams, currentParams.quality);
       drawProgress(
         i,
-        getFileSize(currentParams),
+        currentFileSize,
         bestFileSizeKB,
         desiredFileSizeKB,
         imageUrl,
@@ -769,6 +808,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Generate the image URL
     const imageUrl = getProcessedImage(bestParams, bestParams.quality);
+
+    // --- FIX: Only show final preview if checkbox is checked ---
+    if (showPreview) {
+      const preview = document.getElementById("iteration-preview");
+      preview.src = imageUrl;
+      preview.style.display = "block";
+    }
 
     // Update the download button with the best image
     updateDownloadButton(imageUrl, bestFileSizeKB);
@@ -816,8 +862,8 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     // Calculate minimum and maximum file sizes
-    const minFileSizeKB = getFileSize(minParams);
-    const maxFileSizeKB = getFileSize(maxParams);
+    const minFileSizeKB = getFileSize(croppedImage, minParams);
+    const maxFileSizeKB = getFileSize(croppedImage, maxParams);
 
     // Update the file size range display
     const fileSizeRange = document.getElementById("file-size-range");
@@ -872,8 +918,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Lock/Unlock Color Depth
-  document
-    .getElementById("lock-color-depth")
+  document.getElementById("lock-color-depth")
     .addEventListener("click", function () {
       isColorDepthLocked = !isColorDepthLocked; // Toggle lock state
       colorDepthSlider.disabled = isColorDepthLocked; // Update slider state
