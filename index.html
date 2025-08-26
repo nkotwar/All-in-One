@@ -139,7 +139,7 @@
       <!-- Documentation Section (Default View) -->
       <div id="documentation" class="content active">
         <div id="logoimg">
-          <img style="width: 40%" src="assets/images/logo.png" />
+          <img style="width: 20%" src="assets/images/logo.png" />
         </div>
         <h2>Documentation</h2>
         <h4>[Beta Release for staff]</h4>
@@ -693,7 +693,7 @@
                   <span id="ssy-total-corpus">₹0.00</span>
                 </div>
                 <div class="result-item">
-                  <label>Total Funds Withdrawn:</label>
+                  <label>Funds Withdrawn:</label>
                   <span id="ssy-funds-withdrawn">₹0.00</span>
                 </div>
               </div>
@@ -743,6 +743,129 @@
                 </ul>
               </li>
             </ul>
+          </div>
+        </div>
+
+        <!-- PPF Calculator -->
+        <div id="ppf-calculator" class="calculator-content">
+          <h3>Public Provident Fund (PPF) Calculator</h3>
+          <div class="calculator-container ppf-layout">
+            <div class="form-section">
+              <div class="form-group">
+                <label for="ppf-deposit-frequency">Deposit Frequency:</label>
+                <select id="ppf-deposit-frequency">
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="ppf-deposit">Deposit Amount (₹):</label>
+                <input type="number" id="ppf-deposit" value="1000" min="500" step="100" />
+              </div>
+              <div class="form-group">
+                <label for="ppf-interest-rate">Interest Rate (%):</label>
+                <input type="number" id="ppf-interest-rate" value="7.1" step="0.1" />
+              </div>
+              <div class="form-group">
+                <label for="ppf-tenure">Tenure (Years, in blocks of 5):</label>
+                <input type="number" id="ppf-tenure" value="15" min="15" step="5" />
+              </div>
+              <button id="calculate-ppf" class="btn btn-primary">Calculate</button>
+              <button id="add-partial-withdrawal" class="btn btn-secondary">Add Partial Withdrawal</button>
+            </div>
+            <div class="results-section">
+                <div class="chart-container">
+                    <canvas id="ppf-corpus-growth-chart"></canvas>
+                </div>
+                <div class="ppf-summary">
+                    <div id="ppf-results" class="results-grid">
+                        <div class="result-item">
+                            <label>Maturity Corpus:</label>
+                            <span id="ppf-total-corpus">₹0.00</span>
+                        </div>
+                        <div class="result-item">
+                            <label>Total Interest Earned:</label>
+                            <span id="ppf-interest-earned">₹0.00</span>
+                        </div>
+                        <div class="result-item">
+                            <label>Funds Withdrawn:</label>
+                            <span id="ppf-funds-withdrawn">₹0.00</span>
+                        </div>
+                    </div>
+                    <div class="withdrawal-list">
+                        <h4>Withdrawal History</h4>
+                        <ul id="ppf-withdrawal-list"></ul>
+                    </div>
+                </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fixed Deposit Calculator -->
+        <div id="fd-calculator" class="calculator-content">
+          <h3>Fixed Deposit (FD) Calculator</h3>
+          <div class="calculator-container">
+            <div class="form-section">
+              <div class="form-group">
+                <label for="fd-principal">Principal Amount (₹):</label>
+                <input type="number" id="fd-principal" value="100000" min="1000" step="1000" />
+              </div>
+              <div class="form-group">
+                <label for="fd-interest-rate">Interest Rate (%):</label>
+                <input type="number" id="fd-interest-rate" value="6.5" step="0.1" />
+              </div>
+              <div class="form-group">
+                <label for="fd-tenure">Tenure (Years):</label>
+                <input type="number" id="fd-tenure" value="5" min="1" />
+              </div>
+              <button id="calculate-fd" class="btn btn-primary">Calculate</button>
+            </div>
+            <div class="results-section">
+              <div id="fd-results" class="results-grid">
+                <div class="result-item">
+                  <label>Maturity Amount:</label>
+                  <span id="fd-maturity-amount">₹0.00</span>
+                </div>
+                <div class="result-item">
+                  <label>Total Interest Earned:</label>
+                  <span id="fd-interest-earned">₹0.00</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recurring Deposit Calculator -->
+        <div id="rd-calculator" class="calculator-content">
+          <h3>Recurring Deposit (RD) Calculator</h3>
+          <div class="calculator-container">
+            <div class="form-section">
+              <div class="form-group">
+                <label for="rd-deposit">Monthly Deposit (₹):</label>
+                <input type="number" id="rd-deposit" value="5000" min="100" step="100" />
+              </div>
+              <div class="form-group">
+                <label for="rd-interest-rate">Interest Rate (%):</label>
+                <input type="number" id="rd-interest-rate" value="6.0" step="0.1" />
+              </div>
+              <div class="form-group">
+                <label for="rd-tenure">Tenure (Years):</label>
+                <input type="number" id="rd-tenure" value="5" min="1" />
+              </div>
+              <button id="calculate-rd" class="btn btn-primary">Calculate</button>
+            </div>
+            <div class="results-section">
+              <div id="rd-results" class="results-grid">
+                <div class="result-item">
+                  <label>Maturity Amount:</label>
+                  <span id="rd-maturity-amount">₹0.00</span>
+                </div>
+                <div class="result-item">
+                  <label>Total Interest Earned:</label>
+                  <span id="rd-interest-earned">₹0.00</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

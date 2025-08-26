@@ -23,6 +23,13 @@ const defaultFieldValues = {
     "Region": "Jodhpur",
     "Zone": "Delhi",
     "Purpose of Advance": "Agricultural",
+    "ID": "OVD",
+    "MAKER": "131246",
+    "CHECKER Name": "Nitin Kotwar-139535",
+    "CHECKER Designation": "AM",
+    "Landlord PAN": "ALJPB1062B",
+    "Branch(State) GST": "08AAACC2498P4Z0",
+    "Branch Address": "Vill PO Heenta, Bhinder, Udaipur, Raj. - 313603",
     "Rs": "",
     "Rupees": "",
     "ROI": "",
@@ -141,9 +148,9 @@ const fieldGroups = {
         "Place", "Date", "DATE", "Day", "Month", "Year", "YY - Last 2 digits of Year", "Branch", "Region", "Zone", "State"
     ],
     "Financials": [
-        "Rs", "Rs. - Amount Transferred to Dealer", "Rupees", "ROI", "Facility", "Margin", "1st EMI Month", "Purpose of Advance", "Scheme", "Purpose", "Networth", "Expected Credits in a year"
+        "Rs", "Rs. - Amount Transferred to Dealer", "Amount", "Rupees", "ROI", "Facility", "Margin", "1st EMI Month", "Purpose of Advance", "Scheme", "Purpose", "Networth", "Expected Credits in a year", "Loan Account Number", "Loan Sanctioned Amount", "Disbursement Amount", "EMI Day", "Invoice Number"
     ],
-    "Borrower & Personal Details": [
+    "Customer & Personal Details": [
         "M/s", "Proprietor", "Borrower", "Old Name", "Name", "Name Field 1", "Name Field 2", "Father Name", "Mobile No", "Old Mobile Number", "Mobile Number", "Mob", "email", "PAN", "AADHAR", "ID", "Co-Borrower-1", "Co-Borrower-2", "Co-Borrower-3"
     ],
     "Business & Partnership Details": [
