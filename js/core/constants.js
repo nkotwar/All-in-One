@@ -212,7 +212,7 @@ const accountDetails = {
         "Sender Account Name": "SUNDRY DEBTORS",
         "Sender Account Number": "50810028988",
         "Sender Mobile": "8696930799",
-        "Beneficiary Account Number": "189800000104",
+        "Beneficiary Account Number": "000189800000104",
         "Beneficiary IFSC": "YESB0000771",
         "Beneficiary Account Name": "CENTRAL BANK OF INDIA",
         "Beneficiary Bank": "Yes Bank",

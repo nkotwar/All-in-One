@@ -7,10 +7,8 @@
 
     <!-- CSS Imports -->
     <link rel="stylesheet" href="css/all.min.css" />
-    <link
-      href="https://fonts.googleapis.com/icon?family=Material+Icons"
-      rel="stylesheet"
-    />
+    <!-- Local Material Icons -->
+    <link rel="stylesheet" href="fonts/material-icons.css" />
     <link rel="stylesheet" href="css/cropper.min.css" />
 
     <!-- Base Styles -->
@@ -41,11 +39,17 @@
     <link rel="stylesheet" href="css/styles/pages/_cbs-hierarchy.css" />
     <link rel="stylesheet" href="css/styles/pages/_snap-container.css" />
     <link rel="stylesheet" href="css/styles/pages/pdf-editor.css" />
+    <link rel="stylesheet" href="css/styles/pages/_text-parser.css" />
 
     <link rel="stylesheet" href="css/styles/responsive.css" />
     <link rel="stylesheet" href="css/styles/viewer.css" />
 
-    <!-- JavaScript Imports -->
+    <!-- Modern Core JavaScript -->
+    <script src="js/core/errorHandler.js" defer></script>
+    <script src="js/core/toastSystem.js" defer></script>
+    <script src="js/core/modernController.js" defer></script>
+    
+    <!-- Legacy JavaScript Libraries -->
     <script src="js/libs/interact.min.js" defer></script>
         <script src="js/libs/CustomEase.min.js" defer></script>
     <script src="js/libs/docxreplace.js" defer></script>
@@ -53,7 +57,11 @@
     <script src="js/libs/Sortable.min.js" defer></script>
     <script src="js/libs/pdf-lib.min.js" defer></script>
     <script src="js/libs/cropper.min.js" defer></script>
+        <!-- External Libraries -->
     <script src="js/libs/chart.js" defer></script>
+    <script src="js/libs/jszip.min.js" defer></script>
+    <script src="js/libs/pako.min.js" defer></script>
+    <script src="js/libs/jszip.min.js" defer></script>
     <script src="js/libs/pdf.worker.min.js" defer></script>
     <script src="js/libs/pdf.min.js" defer></script>
     <script src="js/libs/jszip.min.js" defer></script>
@@ -61,6 +69,7 @@
     <script src="js/libs/html2pdf.bundle.min.js" defer></script>
     <script src="js/libs/fuse.min.js" defer></script>
 
+    <!-- Legacy Core Scripts -->
     <script src="js/core/eventHandlers.js" defer></script>
     <script src="js/core/main.js" defer></script>
     <script src="js/core/utils.js" defer></script>
@@ -76,12 +85,20 @@
     <script src="js/modules/wealth-simulator/ssyCalculator.js" defer></script>
     <script src="js/modules/wealth-simulator/ppfCalculator.js" defer></script>
     <script src="js/modules/wealth-simulator/wealthSimulator.js" defer></script>
-    <script src="js/modules/wealth-simulator/agePicker.js" defer></script>
     <script src="js/modules/cbs-hierarchy/cbsData.js" defer></script>
     <script src="js/modules/cbs-hierarchy/cbshierarchy.js" defer></script>
     <script src="js/modules/snap/pdf-editor.js" defer></script>
     <script src="js/modules/snap/ckycsnap.js" defer></script>
     <script src="js/modules/snap/drop-handler.js" defer></script>
+    <script src="js/modules/text-parser/textParser.js" defer></script>
+    <script src="js/modules/text-parser/bankDepositsParser.js" defer></script>
+    <script src="js/modules/text-parser/bglAccountsParser.js" defer></script>
+    <script src="js/modules/text-parser/loansBalanceParser.js" defer></script>
+    <script src="js/modules/text-parser/newLoansBalanceParser.js" defer></script>
+    <script src="js/modules/text-parser/newCCODBalanceParser.js" defer></script>
+    <script src="js/modules/text-parser/ccODBalanceParser.js" defer></script>
+    <script src="js/modules/text-parser/sdvAccountsParser.js" defer></script>
+    <script src="js/modules/text-parser/cgtmseClaimsParser.js" defer></script>
 
     <!-- Data Files -->
     <script src="js/data/data.js" defer></script>
@@ -114,7 +131,10 @@
             <i class="material-icons">account_tree</i> CBS Hierarchy
           </li>
           <li data-tab="snap-container">
-            <i class="material-icons">blur_on</i> F-10/CKYC Snap
+            <i class="material-icons">blur_on</i> PDF/Image Kernel
+          </li>
+          <li data-tab="text-parser">
+            <i class="material-icons">table_view</i> Text File Parser
           </li>
         </ul>
 
@@ -885,7 +905,7 @@
 
       <!-- snap-container -->
       <div id="snap-container" class="snap-container content">
-        <h2>CKYC/F-10 Snapper</h2>
+        <h2>PDF/Image Kernel</h2>
         <div id="drop-area">
           <p>⬆️ Drag and drop an image here</p>
           <input
@@ -1079,6 +1099,158 @@
                   max="24"
                   value="24"
                 />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Text Parser Section -->
+      <div id="text-parser" class="content">
+        <div class="text-parser">
+          <h2>Text File Parser & Data Analyzer</h2>
+          <p>Upload and parse various types of text files to extract structured data with advanced table features.</p>
+
+          <!-- File Upload Zone -->
+          <div class="upload-zone" id="uploadZone">
+            <i class="material-icons">cloud_upload</i>
+            <h3>Drop your text file here</h3>
+            <p>or click to browse files</p>
+            <p><small>Supported formats: .txt, .dat, .csv, .log, .rpt</small></p>
+            <input type="file" class="file-input" id="fileInput" accept=".txt,.dat,.csv,.log,.rpt">
+          </div>
+
+          <!-- Parsing Options -->
+          <div class="parsing-options" id="parsingOptions">
+            <h3>Parsing Configuration</h3>
+            
+            <!-- Preset Buttons -->
+            <div class="preset-buttons">
+              <button class="preset-btn" data-preset="bank-deposits">Bank Deposits Report</button>
+              <button class="preset-btn" data-preset="bgl-accounts">BGL Account Balances</button>
+              <button class="preset-btn" data-preset="loans-balance">Loans Balance Report</button>
+              <button class="preset-btn" data-preset="new-loans-balance">New Loans Balance Report</button>
+              <button class="preset-btn" data-preset="new-cc-od-balance">New CC/OD Balance Report</button>
+              <button class="preset-btn" data-preset="cc-od-balance">CC/OD Balance Report</button>
+              <button class="preset-btn" data-preset="sdv-accounts">SDV Accounts Report</button>
+              <button class="preset-btn" data-preset="cgtmse-claims">CGTMSE Claims Report</button>
+              <button class="preset-btn" data-preset="fixed-width">Fixed Width Columns</button>
+              <button class="preset-btn" data-preset="delimited">Delimited (CSV/TSV)</button>
+              <button class="preset-btn" data-preset="custom">Custom Pattern</button>
+            </div>
+
+            <div class="options-grid">
+              <div class="option-group">
+                <label for="parserType">Parser Type:</label>
+                <select id="parserType">
+                  <option value="bank-deposits">Bank Deposits Report</option>
+                  <option value="bgl-accounts">BGL Account Balances</option>
+                  <option value="loans-balance">Loans Balance Report</option>
+                  <option value="new-loans-balance">New Loans Balance Report</option>
+                  <option value="new-cc-od-balance">New CC/OD Balance Report</option>
+                  <option value="cc-od-balance">CC/OD Balance Report</option>
+                  <option value="sdv-accounts">SDV Accounts Report</option>
+                  <option value="cgtmse-claims">CGTMSE Claims Report</option>
+                  <option value="fixed-width">Fixed Width Columns</option>
+                  <option value="delimited">Delimited</option>
+                  <option value="regex">Regular Expression</option>
+                  <option value="positional">Positional</option>
+                </select>
+              </div>
+
+              <div class="option-group">
+                <label for="delimiter">Delimiter (for delimited files):</label>
+                <input type="text" id="delimiter" placeholder="e.g., ',' or '|' or '\t'" value=",">
+              </div>
+
+              <div class="option-group">
+                <label for="skipLines">Skip Lines from Top:</label>
+                <input type="number" id="skipLines" value="0" min="0">
+              </div>
+
+              <div class="option-group">
+                <label for="headerRow">Header Row Number:</label>
+                <input type="number" id="headerRow" value="1" min="0">
+              </div>
+
+              <div class="option-group">
+                <label for="encoding">File Encoding:</label>
+                <select id="encoding">
+                  <option value="utf-8">UTF-8</option>
+                  <option value="ascii">ASCII</option>
+                  <option value="latin1">Latin-1</option>
+                  <option value="windows-1252">Windows-1252</option>
+                </select>
+              </div>
+
+              <div class="option-group">
+                <label for="customPattern">Custom Regex Pattern:</label>
+                <textarea id="customPattern" placeholder="Enter regex pattern for custom parsing..."></textarea>
+              </div>
+            </div>
+
+            <button class="parse-button" id="parseButton" disabled>Parse File</button>
+          </div>
+
+          <!-- Data Container -->
+          <div class="data-container" id="dataContainer">
+            <!-- Table Controls -->
+            <div class="table-controls">
+              <div class="control-group">
+                <label for="searchTable">Search:</label>
+                <input type="text" id="searchTable" placeholder="Search data...">
+              </div>
+              <div class="control-group">
+                <label for="pageSize">Rows per page:</label>
+                <select id="pageSize">
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                  <option value="all">All</option>
+                </select>
+              </div>
+              <div class="control-group">
+                <button id="toggleColumns" class="export-btn">Manage Columns</button>
+                <!-- Analyze Data button removed - auto-analysis on data load -->
+              </div>
+            </div>
+
+            <!-- Column Management -->
+            <div class="column-controls" id="columnControls" style="display: none;">
+              <h4>Show/Hide Columns</h4>
+              <div class="column-list" id="columnList">
+                <!-- Column checkboxes will be generated dynamically -->
+              </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="table-wrapper">
+              <table class="data-table" id="dataTable">
+                <thead id="tableHead">
+                  <!-- Headers will be generated dynamically -->
+                </thead>
+                <tbody id="tableBody">
+                  <!-- Data rows will be generated dynamically -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination" id="pagination">
+              <!-- Pagination controls will be generated dynamically -->
+            </div>
+
+            <!-- Export Controls -->
+            <div class="export-controls">
+              <button class="export-btn" id="exportExcel">Export Excel</button>
+              <!-- Simplified: only Excel export available -->
+            </div>
+
+            <!-- Statistics Panel -->
+            <div class="stats-panel" id="statsPanel" style="display: none;">
+              <h4>Data Analysis</h4>
+              <div class="stats-grid" id="statsGrid">
+                <!-- Statistics will be generated dynamically -->
               </div>
             </div>
           </div>

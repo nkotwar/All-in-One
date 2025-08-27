@@ -50,6 +50,15 @@ document.addEventListener('DOMContentLoaded', function () {
         tab.addEventListener('click', function () {
             const targetTab = this.getAttribute('data-tab');
     
+            // Update active menu item
+            menuInnerUl.querySelectorAll('li').forEach(item => {
+                item.classList.remove('active');
+            });
+            this.classList.add('active');
+    
+            // Save the active tab to localStorage
+            localStorage.setItem('activeTab', targetTab);
+    
             // Hide all content sections
             contents.forEach(content => {
                 content.classList.remove('active');
@@ -87,15 +96,82 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }, 50);
             }
+
+            // NEW: Initialize text parser when that tab is selected
+            if (targetTab === 'text-parser') {
+                if (window.textParser) {
+                    // Reset any existing state if needed
+                    console.log('Text parser tab activated');
+                }
+            }
     
             // Collapse the menu when a tab is selected
             menu.classList.remove('expanded');
         });
     });
 
-    // Initialize the default section (Documentation)
-    document.getElementById('documentation').classList.add('active');
-    pdfSidebar.style.display = 'flex'; // Show the PDF sidebar by default
+    // Function to activate a specific tab
+    function activateTab(tabName) {
+        // Find the menu item for this tab
+        const menuItem = menuInnerUl.querySelector(`li[data-tab="${tabName}"]`);
+        const targetContent = document.getElementById(tabName);
+        
+        if (menuItem && targetContent) {
+            // Update active menu item
+            menuInnerUl.querySelectorAll('li').forEach(item => {
+                item.classList.remove('active');
+            });
+            menuItem.classList.add('active');
+            
+            // Hide all content sections
+            contents.forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Show the selected content section
+            targetContent.classList.add('active');
+            
+            // Initialize specific modules based on the tab
+            if (tabName === 'emi-calculator') {
+                initEMICalculator();
+            }
+            
+            // Show or hide the PDF sidebar based on the active section
+            if (tabName === 'documentation') {
+                pdfSidebar.style.display = 'flex';
+            } else {
+                pdfSidebar.style.display = 'none';
+                pdfSidebar.classList.remove('active');
+                document.body.classList.remove('sidebar-active');
+            }
+            
+            // Focus on CBS search when that tab is selected
+            if (tabName === 'cbs-hierarchy') {
+                setTimeout(() => {
+                    const searchInput = document.getElementById('cbsSearchInput');
+                    if (searchInput) {
+                        searchInput.focus();
+                    }
+                }, 50);
+            }
+            
+            // Initialize text parser when that tab is selected
+            if (tabName === 'text-parser') {
+                if (window.textParser) {
+                    console.log('Text parser tab activated');
+                }
+            }
+        }
+    }
+
+    // Initialize the section based on localStorage or default to documentation
+    const savedTab = localStorage.getItem('activeTab');
+    if (savedTab && document.getElementById(savedTab)) {
+        activateTab(savedTab);
+    } else {
+        // Initialize the default section (Documentation)
+        activateTab('documentation');
+    }
 
 
     document.addEventListener("mousemove", (e) => {

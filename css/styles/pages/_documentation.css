@@ -8,6 +8,14 @@
   column-count: 2;
   column-gap: 16px;
   text-align: left;
+  margin-bottom: var(--space-4);
+}
+
+/* Form Container Button Alignment */
+#formContainer + #fillAndOpen {
+  margin-top: var(--space-4);
+  display: block;
+  width: fit-content;
 }
 
 #pdfSidebar {

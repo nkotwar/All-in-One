@@ -1,4 +1,4 @@
-/* CKYC Snap styles */
+/* PDF/Image Kernel styles */
 .snap-container {
     background: #e0e5ec;
     padding: 30px;
@@ -105,6 +105,11 @@
 
 #button-container {
     display: flex;
+    gap: var(--space-3);
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    margin-top: var(--space-4);
 }
 
 .slider-row button{
