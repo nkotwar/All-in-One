@@ -9,6 +9,9 @@
  * - Multiple sections separated by !E markers
  */
 
+const CCOD_DEBUG = false;
+const ccodDbg = (...args) => { if (CCOD_DEBUG) console.debug(...args); };
+
 class CCODBalanceParser {
     constructor() {
         this.reportInfo = {};
@@ -16,7 +19,7 @@ class CCODBalanceParser {
         this.columns = [
             'Customer Number',
             'Account Number',
-            'Account Type Description',
+            'ACCOUNT TYPE(DESCRIPTION)',
             'Customer Name',
             'Interest Rate',
             'Limit',
@@ -41,16 +44,16 @@ class CCODBalanceParser {
      * Parse the CC/OD Balance file content
      */
     parse(content) {
-        console.log('Starting CC/OD Balance Parser...');
-        console.log(`File content length: ${content.length} characters`);
+        ccodDbg('Starting CC/OD Balance Parser...');
+        ccodDbg(`File content length: ${content.length} characters`);
         
         const lines = content.split('\n');
-        console.log(`Total lines in file: ${lines.length}`);
+        ccodDbg(`Total lines in file: ${lines.length}`);
         
         const data = [];
         let reportInfo = this.extractReportInfo(lines);
         
-        console.log('Extracted report info:', reportInfo);
+        ccodDbg('Extracted report info:', reportInfo);
         
         // Find all data sections (there can be multiple sections separated by !E markers)
         const dataSections = [];
@@ -65,11 +68,11 @@ class CCODBalanceParser {
                     // Start of a data section
                     currentSectionStart = i + 1;
                     insideDataSection = true;
-                    console.log(`Data section starts at line ${currentSectionStart}`);
+                    ccodDbg(`Data section starts at line ${currentSectionStart}`);
                 } else {
                     // End of current data section
                     dataSections.push({ start: currentSectionStart, end: i });
-                    console.log(`Data section ends at line ${i} (lines ${currentSectionStart} to ${i})`);
+                    ccodDbg(`Data section ends at line ${i} (lines ${currentSectionStart} to ${i})`);
                     insideDataSection = false;
                 }
             }
@@ -78,10 +81,10 @@ class CCODBalanceParser {
         // If still inside a section at end of file, close it
         if (insideDataSection && currentSectionStart !== -1) {
             dataSections.push({ start: currentSectionStart, end: lines.length });
-            console.log(`Final data section: lines ${currentSectionStart} to ${lines.length}`);
+            ccodDbg(`Final data section: lines ${currentSectionStart} to ${lines.length}`);
         }
         
-        console.log(`Found ${dataSections.length} data sections`);
+        ccodDbg(`Found ${dataSections.length} data sections`);
         
         if (dataSections.length === 0) {
             console.warn('Could not find any data sections with !E markers');
@@ -91,7 +94,7 @@ class CCODBalanceParser {
         // Process all data sections
         const objectData = [];
         dataSections.forEach((section, sectionIndex) => {
-            console.log(`Processing section ${sectionIndex + 1}: lines ${section.start} to ${section.end}`);
+            ccodDbg(`Processing section ${sectionIndex + 1}: lines ${section.start} to ${section.end}`);
             
             for (let i = section.start; i < section.end; i++) {
                 const line = lines[i];
@@ -100,7 +103,7 @@ class CCODBalanceParser {
                     const rowData = this.parseDataLine(line);
                     if (rowData && Object.keys(rowData).length > 0) {
                         objectData.push(rowData);
-                        console.log(`Parsed data row ${objectData.length} from section ${sectionIndex + 1}:`, rowData);
+                        ccodDbg(`Parsed data row ${objectData.length} from section ${sectionIndex + 1}:`, rowData);
                     }
                 }
             }
@@ -112,7 +115,7 @@ class CCODBalanceParser {
             return headers.map(header => rowObj[header] || '');
         });
         
-        console.log(`CC/OD Balance Parser completed. Found ${arrayData.length} records.`);
+        ccodDbg(`CC/OD Balance Parser completed. Found ${arrayData.length} records.`);
         
         return {
             data: arrayData,
@@ -204,7 +207,7 @@ class CCODBalanceParser {
             return false;
         }
         
-        console.log('✓ Valid CC/OD data line detected:', trimmedLine.substring(0, 80) + '...');
+    ccodDbg('✓ Valid CC/OD data line detected:', trimmedLine.substring(0, 80) + '...');
         return true;
     }
 
@@ -241,7 +244,7 @@ class CCODBalanceParser {
             // Assign values to row data
             if (customerNumber) rowData['Customer Number'] = customerNumber;
             if (accountNumber) rowData['Account Number'] = accountNumber;
-            if (accountType) rowData['Account Type Description'] = accountType;
+            if (accountType) rowData['ACCOUNT TYPE(DESCRIPTION)'] = accountType;
             if (customerName) rowData['Customer Name'] = customerName;
             if (interestRate && interestRate !== '0.00') {
                 if (interestRate === 'TIERE') {
@@ -335,7 +338,7 @@ class CCODBalanceParser {
         const outstandingBalanceIndex = headers.indexOf('Outstanding Balance');
         const drawingPowerIndex = headers.indexOf('Drawing Power');
         const interestRateIndex = headers.indexOf('Interest Rate');
-        const accountTypeIndex = headers.indexOf('Account Type Description');
+    const accountTypeIndex = headers.indexOf('ACCOUNT TYPE(DESCRIPTION)');
         const iracNewIndex = headers.indexOf('IRAC New');
         
         let interestRateSum = 0;
@@ -407,5 +410,5 @@ if (typeof window !== 'undefined' && window.textParser) {
         const parser = new CCODBalanceParser();
         return parser.parse(content);
     });
-    console.log('CC/OD Balance Parser registered successfully');
+    ccodDbg('CC/OD Balance Parser registered successfully');
 }

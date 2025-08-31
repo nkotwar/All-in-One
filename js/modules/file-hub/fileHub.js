@@ -9,6 +9,17 @@
   const hub = {
     // Registry: order matters for detection precedence
     handlers: [
+      // Excel handler (routes to text-parser)
+      {
+        id: 'excel',
+        canHandle: (file) => hasExt(file, '.xlsx') || isType(file, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') || hasExt(file, '.xls') || isType(file, 'application/vnd.ms-excel'),
+        enter: () => activateModule('text'),
+        handle: async (files) => {
+          const firstExcel = first(files, (f) => hasExt(f, '.xlsx') || hasExt(f, '.xls') || isType(f, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') || isType(f, 'application/vnd.ms-excel'));
+          await ensureTextParserReady();
+          feedTextParserFile(firstExcel);
+        },
+      },
       // PDF handler (uses snap/pdf-editor)
       {
         id: 'pdf',
@@ -108,7 +119,7 @@
   // Router logic
   function route(files) {
     // One primary category per batch. Priority: PDF > Image > Text/Gzip > Zip
-    for (const id of ['pdf', 'image', 'text', 'gzip', 'zip']) {
+  for (const id of ['pdf', 'image', 'excel', 'text', 'gzip', 'zip']) {
       const h = hub.handlers.find((x) => x.id === id);
       if (h && files.some((f) => h.canHandle(f))) {
         h.enter?.();

@@ -9,6 +9,9 @@
  * - Significantly detailed format for banking compliance and monitoring
  */
 
+const NEW_CCOD_DEBUG = false;
+const newCcodDbg = (...args) => { if (NEW_CCOD_DEBUG) console.debug(...args); };
+
 class NewCCODBalanceParser {
     constructor() {
         this.reportInfo = {};
@@ -68,16 +71,16 @@ class NewCCODBalanceParser {
      * Parse the New CC/OD Balance file content
      */
     parse(content) {
-        console.log('Starting New CC/OD Balance Parser...');
-        console.log(`File content length: ${content.length} characters`);
+    newCcodDbg('Starting New CC/OD Balance Parser...');
+    newCcodDbg(`File content length: ${content.length} characters`);
         
         const lines = content.split('\n');
-        console.log(`Total lines in file: ${lines.length}`);
+    newCcodDbg(`Total lines in file: ${lines.length}`);
         
         const data = [];
         let reportInfo = this.extractReportInfo(lines);
         
-        console.log('Extracted report info:', reportInfo);
+    newCcodDbg('Extracted report info:', reportInfo);
         
         // Find all data sections (there can be multiple sections separated by !E markers)
         const dataSections = [];
@@ -92,11 +95,11 @@ class NewCCODBalanceParser {
                     // Start of a data section
                     currentSectionStart = i + 1;
                     insideDataSection = true;
-                    console.log(`Data section starts at line ${currentSectionStart}`);
+                    newCcodDbg(`Data section starts at line ${currentSectionStart}`);
                 } else {
                     // End of current data section
                     dataSections.push({ start: currentSectionStart, end: i });
-                    console.log(`Data section ends at line ${i} (lines ${currentSectionStart} to ${i})`);
+                    newCcodDbg(`Data section ends at line ${i} (lines ${currentSectionStart} to ${i})`);
                     insideDataSection = false;
                 }
             }
@@ -105,10 +108,10 @@ class NewCCODBalanceParser {
         // If still inside a section at end of file, close it
         if (insideDataSection && currentSectionStart !== -1) {
             dataSections.push({ start: currentSectionStart, end: lines.length });
-            console.log(`Final data section: lines ${currentSectionStart} to ${lines.length}`);
+            newCcodDbg(`Final data section: lines ${currentSectionStart} to ${lines.length}`);
         }
         
-        console.log(`Found ${dataSections.length} data sections`);
+    newCcodDbg(`Found ${dataSections.length} data sections`);
         
         if (dataSections.length === 0) {
             console.warn('Could not find any data sections with !E markers');
@@ -118,7 +121,7 @@ class NewCCODBalanceParser {
         // Process all data sections
         const objectData = [];
         dataSections.forEach((section, sectionIndex) => {
-            console.log(`Processing section ${sectionIndex + 1}: lines ${section.start} to ${section.end}`);
+            newCcodDbg(`Processing section ${sectionIndex + 1}: lines ${section.start} to ${section.end}`);
             
             for (let i = section.start; i < section.end; i++) {
                 const line = lines[i];
@@ -127,7 +130,6 @@ class NewCCODBalanceParser {
                     const rowData = this.parseDataLine(line);
                     if (rowData && Object.keys(rowData).length > 0) {
                         objectData.push(rowData);
-                        console.log(`Parsed data row ${objectData.length} from section ${sectionIndex + 1}:`, rowData);
                     }
                 }
             }
@@ -139,7 +141,7 @@ class NewCCODBalanceParser {
             return headers.map(header => rowObj[header] || '');
         });
         
-        console.log(`New CC/OD Balance Parser completed. Found ${arrayData.length} records.`);
+    newCcodDbg(`New CC/OD Balance Parser completed. Found ${arrayData.length} records.`);
         
         return {
             data: arrayData,
@@ -214,38 +216,38 @@ class NewCCODBalanceParser {
         // Look for customer number pattern at start (10+ digits)
         const customerNumberMatch = trimmedLine.match(/^\d{10,}/);
         if (!customerNumberMatch) {
-            console.log('No customer number found in line:', trimmedLine.substring(0, 50));
+            // noisy; skip unless debugging
+            newCcodDbg('No customer number found in line:', trimmedLine.substring(0, 50));
             return false;
         }
         
         // Split into parts and check structure
         const parts = trimmedLine.split(/\s+/);
         if (parts.length < 5) {
-            console.log('Not enough parts in line:', parts.length);
+            newCcodDbg('Not enough parts in line:', parts.length);
             return false;
         }
         
         // Second part should be account number (numeric)
         if (!/^\d{8,}$/.test(parts[1])) {
-            console.log('Invalid account number format:', parts[1]);
+            newCcodDbg('Invalid account number format:', parts[1]);
             return false;
         }
         
         // Should contain currency amounts and rates
         const currencyMatches = line.match(/\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+\.\d{2}|\d{1,3}(?:,\d{3})+/g);
         if (!currencyMatches || currencyMatches.length < 3) {
-            console.log('Not enough currency matches:', currencyMatches?.length || 0);
+            newCcodDbg('Not enough currency matches:', currencyMatches?.length || 0);
             return false;
         }
         
         // Should contain date patterns or N/A
         const datePattern = /\d{2}\/\d{2}\/\d{4}|N\/A|EXPIRED/;
         if (!datePattern.test(line)) {
-            console.log('No date pattern found in line');
+            newCcodDbg('No date pattern found in line');
             return false;
         }
         
-        console.log('✓ Valid CC/OD data line detected:', trimmedLine.substring(0, 80) + '...');
         return true;
     }
 
@@ -258,7 +260,7 @@ class NewCCODBalanceParser {
         try {
             // Trim the line and handle the complex structure
             let workingLine = line.trim();
-            console.log('Parsing CC/OD line:', workingLine.substring(0, 100) + '...');
+            newCcodDbg('Parsing CC/OD line:', workingLine.substring(0, 100) + '...');
             
             // Extract customer number (first field)
             const customerMatch = workingLine.match(/^(\d{10,})/);
@@ -287,9 +289,9 @@ class NewCCODBalanceParser {
             const dateMatches = workingLine.match(/(\d{2}\/\d{2}\/\d{4})/g);
             const rateMatches = workingLine.match(/(\d+\.\d{2})/g);
             
-            console.log('Found currencies:', currencyMatches?.length || 0);
-            console.log('Found dates:', dateMatches?.length || 0);
-            console.log('Found rates:', rateMatches?.length || 0);
+            newCcodDbg('Found currencies:', currencyMatches?.length || 0);
+            newCcodDbg('Found dates:', dateMatches?.length || 0);
+            newCcodDbg('Found rates:', rateMatches?.length || 0);
             
             // Map the extracted values to appropriate fields
             if (rateMatches && rateMatches.length >= 1) {
@@ -490,5 +492,5 @@ if (typeof window !== 'undefined' && window.textParser) {
         const parser = new NewCCODBalanceParser();
         return parser.parse(content);
     });
-    console.log('New CC/OD Balance Parser registered successfully');
+    newCcodDbg('New CC/OD Balance Parser registered successfully');
 }

@@ -9,6 +9,9 @@
  * - Multi-page report with totals and subtotals
  */
 
+const GLB_DEBUG = false;
+const glbDbg = (...args) => { if (GLB_DEBUG) console.debug('[GLB]', ...args); };
+
 class GLBParser {
     constructor() {
         this.reportInfo = {};
@@ -29,16 +32,16 @@ class GLBParser {
      * Parse the GLB file content
      */
     parse(content) {
-        console.log('Starting GLB Parser...');
-        console.log(`File content length: ${content.length} characters`);
+        glbDbg('Starting GLB Parser...');
+        glbDbg(`File content length: ${content.length} characters`);
         
-        const lines = content.split('\n');
-        console.log(`Total lines in file: ${lines.length}`);
+    const lines = content.split('\n');
+    glbDbg(`Total lines in file: ${lines.length}`);
         
         const data = [];
         let reportInfo = this.extractReportInfo(lines);
         
-        console.log('Extracted report info:', reportInfo);
+    glbDbg('Extracted report info:', reportInfo);
         
         // Process the balance sheet sections
         const objectData = this.parseBalanceSheetData(lines);
@@ -49,7 +52,7 @@ class GLBParser {
             return headers.map(header => rowObj[header] || '');
         });
         
-        console.log(`GLB Parser completed. Found ${arrayData.length} records.`);
+    glbDbg(`GLB Parser completed. Found ${arrayData.length} records.`);
         
         return {
             data: arrayData,
@@ -334,5 +337,5 @@ if (typeof window !== 'undefined' && window.textParser) {
         const parser = new GLBParser();
         return parser.parse(content);
     });
-    console.log('GLB Parser registered successfully');
+    glbDbg('GLB Parser registered successfully');
 }

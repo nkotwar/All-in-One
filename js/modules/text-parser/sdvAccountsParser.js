@@ -3,6 +3,9 @@
  * Handles Safe Deposit Vault (Lockers) Accounts reports from Central Bank of India
  */
 
+const SDV_DEBUG = false;
+const sdvDbg = (...args) => { if (SDV_DEBUG) console.debug(...args); };
+
 class SDVAccountsParser {
     constructor() {
         this.columns = [
@@ -31,7 +34,7 @@ class SDVAccountsParser {
 
     parse(content) {
         try {
-            console.log('SDV Accounts Parser: Starting parse');
+            sdvDbg('SDV Accounts Parser: Starting parse');
             
             const lines = content.split('\n');
             const dataRows = [];
@@ -91,8 +94,8 @@ class SDVAccountsParser {
             reportSummary.totalRecords = dataRows.length;
             reportSummary.totalDueAmount = totalDueAmount;
 
-            console.log(`SDV Accounts Parser: Successfully parsed ${dataRows.length} records`);
-            console.log('Summary:', reportSummary);
+            sdvDbg(`SDV Accounts Parser: Successfully parsed ${dataRows.length} records`);
+            sdvDbg('Summary:', reportSummary);
 
             return {
                 success: true,
@@ -131,7 +134,7 @@ class SDVAccountsParser {
             const parts = line.split('|').map(part => part.trim()).filter(part => part !== '');
             
             if (parts.length < 19) {
-                console.log('SDV Parser: Skipping line with insufficient columns:', parts.length);
+                sdvDbg('SDV Parser: Skipping line with insufficient columns:', parts.length);
                 return null;
             }
 
@@ -161,7 +164,7 @@ class SDVAccountsParser {
 
             // Validation - ensure we have essential fields
             if (!rowData.SR_NO || !rowData.CIF_NUMBER || !rowData.SDV_ACCOUNT_NUMBER) {
-                console.log('SDV Parser: Skipping row missing essential fields');
+                sdvDbg('SDV Parser: Skipping row missing essential fields');
                 return null;
             }
 

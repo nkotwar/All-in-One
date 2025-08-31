@@ -9,8 +9,11 @@
  * - Includes borrower details, loan information, guarantee details, and application status
  */
 
+const CGTMSE_DEBUG = false;
+const cgtDbg = (...args) => { if (CGTMSE_DEBUG) console.debug('[CGTMSE]', ...args); };
+
 function parseCGTMSEClaims(content) {
-    console.log('Starting CGTMSE Claims parsing...');
+    cgtDbg('Starting CGTMSE Claims parsing...');
     
     try {
         const lines = content.split('\n').filter(line => line.trim());
@@ -20,8 +23,8 @@ function parseCGTMSEClaims(content) {
         }
         
         // Extract headers from first line
-        const headers = lines[0].split('|').map(header => header.trim());
-        console.log(`Found ${headers.length} columns:`, headers);
+    const headers = lines[0].split('|').map(header => header.trim());
+    cgtDbg(`Found ${headers.length} columns:`, headers);
         
         // Parse data rows
         const data = [];
@@ -80,7 +83,7 @@ function parseCGTMSEClaims(content) {
             console.warn(`Parsing completed with ${parseErrors.length} errors:`, parseErrors);
         }
         
-        console.log(`Successfully parsed ${data.length} CGTMSE claims records`);
+    cgtDbg(`Successfully parsed ${data.length} CGTMSE claims records`);
         
         return {
             success: true,

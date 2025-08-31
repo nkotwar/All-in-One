@@ -9,6 +9,9 @@
  * - Significantly more detailed than standard LoansBalanceFile format
  */
 
+const NEW_LOANS_DEBUG = false;
+const newLoansDbg = (...args) => { if (NEW_LOANS_DEBUG) console.debug(...args); };
+
 class NewLoansBalanceParser {
     constructor() {
         this.reportInfo = {};
@@ -69,16 +72,16 @@ class NewLoansBalanceParser {
      * Parse the New Loans Balance file content
      */
     parse(content) {
-        console.log('Starting New Loans Balance Parser...');
-        console.log(`File content length: ${content.length} characters`);
+    newLoansDbg('Starting New Loans Balance Parser...');
+    newLoansDbg(`File content length: ${content.length} characters`);
         
         const lines = content.split('\n');
-        console.log(`Total lines in file: ${lines.length}`);
+    newLoansDbg(`Total lines in file: ${lines.length}`);
         
         const data = [];
         let reportInfo = this.extractReportInfo(lines);
         
-        console.log('Extracted report info:', reportInfo);
+    newLoansDbg('Extracted report info:', reportInfo);
         
         // Find all data sections (there can be multiple sections separated by !E markers)
         const dataSections = [];
@@ -93,11 +96,11 @@ class NewLoansBalanceParser {
                     // Start of a data section
                     currentSectionStart = i + 1;
                     insideDataSection = true;
-                    console.log(`Data section starts at line ${currentSectionStart}`);
+                    newLoansDbg(`Data section starts at line ${currentSectionStart}`);
                 } else {
                     // End of current data section
                     dataSections.push({ start: currentSectionStart, end: i });
-                    console.log(`Data section ends at line ${i} (lines ${currentSectionStart} to ${i})`);
+                    newLoansDbg(`Data section ends at line ${i} (lines ${currentSectionStart} to ${i})`);
                     insideDataSection = false;
                 }
             }
@@ -106,10 +109,10 @@ class NewLoansBalanceParser {
         // If still inside a section at end of file, close it
         if (insideDataSection && currentSectionStart !== -1) {
             dataSections.push({ start: currentSectionStart, end: lines.length });
-            console.log(`Final data section: lines ${currentSectionStart} to ${lines.length}`);
+            newLoansDbg(`Final data section: lines ${currentSectionStart} to ${lines.length}`);
         }
         
-        console.log(`Found ${dataSections.length} data sections`);
+    newLoansDbg(`Found ${dataSections.length} data sections`);
         
         if (dataSections.length === 0) {
             console.warn('Could not find any data sections with !E markers');
@@ -119,7 +122,7 @@ class NewLoansBalanceParser {
         // Process all data sections
         const objectData = [];
         dataSections.forEach((section, sectionIndex) => {
-            console.log(`Processing section ${sectionIndex + 1}: lines ${section.start} to ${section.end}`);
+            newLoansDbg(`Processing section ${sectionIndex + 1}: lines ${section.start} to ${section.end}`);
             
             for (let i = section.start; i < section.end; i++) {
                 const line = lines[i];
@@ -128,7 +131,6 @@ class NewLoansBalanceParser {
                     const rowData = this.parseDataLine(line);
                     if (rowData && Object.keys(rowData).length > 0) {
                         objectData.push(rowData);
-                        console.log(`Parsed data row ${objectData.length} from section ${sectionIndex + 1}:`, rowData);
                     }
                 }
             }
@@ -140,7 +142,7 @@ class NewLoansBalanceParser {
             return headers.map(header => rowObj[header] || '');
         });
         
-        console.log(`New Loans Balance Parser completed. Found ${arrayData.length} records.`);
+    newLoansDbg(`New Loans Balance Parser completed. Found ${arrayData.length} records.`);
         
         return {
             data: arrayData,
@@ -210,38 +212,37 @@ class NewLoansBalanceParser {
         // More flexible account number check - look for 10+ digits at start
         const accountNumberMatch = trimmedLine.match(/^\d{10,}/);
         if (!accountNumberMatch) {
-            console.log('No account number found in line:', trimmedLine.substring(0, 50));
+            newLoansDbg('No account number found in line:', trimmedLine.substring(0, 50));
             return false;
         }
         
         // Check for CIF number after account number - be more flexible
         const parts = trimmedLine.split(/\s+/);
         if (parts.length < 3) {
-            console.log('Not enough parts in line:', parts.length);
+            newLoansDbg('Not enough parts in line:', parts.length);
             return false;
         }
         
         // Second part should be CIF (numeric) - relax the length requirement
         if (!/^\d{8,}$/.test(parts[1])) {
-            console.log('Invalid CIF format:', parts[1]);
+            newLoansDbg('Invalid CIF format:', parts[1]);
             return false;
         }
         
         // Should contain at least some currency amounts - be more flexible
         const currencyMatches = line.match(/\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+\.\d{2}|\d{1,3}(?:,\d{3})+/g);
         if (!currencyMatches || currencyMatches.length < 3) {
-            console.log('Not enough currency matches:', currencyMatches?.length || 0);
+            newLoansDbg('Not enough currency matches:', currencyMatches?.length || 0);
             return false;
         }
         
         // Should contain at least one date pattern - be more flexible
         const datePattern = /\d{2}[-\/]\d{2}[-\/]\d{4}/;
         if (!datePattern.test(line)) {
-            console.log('No date pattern found in line');
+            newLoansDbg('No date pattern found in line');
             return false;
         }
         
-        console.log('✓ Valid data line detected:', trimmedLine.substring(0, 80) + '...');
         return true;
     }
 
@@ -254,7 +255,7 @@ class NewLoansBalanceParser {
         try {
             // Trim the line and handle the complex structure
             let workingLine = line.trim();
-            console.log('Parsing line:', workingLine.substring(0, 150) + '...');
+            newLoansDbg('Parsing line:', workingLine.substring(0, 150) + '...');
             
             // Extract account number (first field)
             const accountMatch = workingLine.match(/^(\d{10,})/);
@@ -284,8 +285,8 @@ class NewLoansBalanceParser {
             const dateMatches = workingLine.match(/(\d{2}[-\/]\d{2}[-\/]\d{4})/g);
             const numberMatches = workingLine.match(/(\d+(?:\.\d+)?)/g);
             
-            console.log('Found currencies:', currencyMatches?.length || 0);
-            console.log('Found dates:', dateMatches?.length || 0);
+            newLoansDbg('Found currencies:', currencyMatches?.length || 0);
+            newLoansDbg('Found dates:', dateMatches?.length || 0);
             
             // Map the extracted values to appropriate fields
             if (currencyMatches && currencyMatches.length >= 5) {
@@ -481,5 +482,5 @@ if (typeof window !== 'undefined' && window.textParser) {
         const parser = new NewLoansBalanceParser();
         return parser.parse(content);
     });
-    console.log('New Loans Balance Parser registered successfully');
+    newLoansDbg('New Loans Balance Parser registered successfully');
 }

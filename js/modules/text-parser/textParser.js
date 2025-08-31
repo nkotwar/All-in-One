@@ -42,6 +42,7 @@ class TextParser {
         this.filteredData = [];
         this.columnFilters = {}; // Store active filters for each column
         this.loadingOverlay = null;
+    this.currentFileName = null; // Track current file name for presets
     // Pending UI state when elements are not mounted yet
     this.pendingParserType = null;
     this.pendingDelimiter = null;
@@ -69,14 +70,14 @@ class TextParser {
     // Method to register new parsers dynamically
     registerParser(name, parserFunction) {
         this.parsers[name] = parserFunction;
-        console.log(`Registered new parser: ${name}`);
+    // Optional: log registry in debug builds only
     }
 
     showLoading(message = 'Processing...') {
         // Remove existing loading overlay if any
         this.hideLoading();
         
-        console.log('Showing loading overlay:', message);
+    // Avoid console noise for loading overlay
         
         // Create loading overlay
         this.loadingOverlay = document.createElement('div');
@@ -99,12 +100,10 @@ class TextParser {
         this.loadingOverlay.appendChild(loadingContent);
         
         document.body.appendChild(this.loadingOverlay);
-        console.log('Loading overlay added to DOM');
     }
 
     hideLoading() {
         if (this.loadingOverlay) {
-            console.log('Hiding loading overlay');
             this.loadingOverlay.remove();
             this.loadingOverlay = null;
         }
@@ -284,7 +283,19 @@ class TextParser {
     async processFile(file) {
         const fileName = file.name;
         const fileSize = (file.size / 1024 / 1024).toFixed(2);
+    this.currentFileName = fileName;
         
+        // Excel handling first
+        const lower = fileName.toLowerCase();
+        if (lower.endsWith('.xlsx') || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+            await this.processExcelFile(file, fileName, fileSize);
+            return;
+        }
+        if (lower.endsWith('.xls') || file.type === 'application/vnd.ms-excel') {
+            await this.processXlsFile(file, fileName, fileSize);
+            return;
+        }
+
         // Check if it's a .gz file
         if (fileName.toLowerCase().endsWith('.gz')) {
             await this.processGzipFile(file, fileName, fileSize);
@@ -293,6 +304,383 @@ class TextParser {
         
         // Regular file processing (includes .txt and files without extensions)
         this.processRegularFile(file, fileName, fileSize);
+    }
+
+    async processExcelFile(file, fileName, fileSize) {
+        try {
+            // Visual feedback (if UI present)
+            const uploadZone = document.getElementById('uploadZone');
+            if (uploadZone) {
+                uploadZone.innerHTML = `
+                    <i class="material-icons">table_chart</i>
+                    <h3>Reading: ${fileName}</h3>
+                    <p>Size: ${fileSize} MB</p>
+                    <p><small>Parsing .xlsx (header in first row)...</small></p>
+                `;
+            }
+
+            if (!window.JSZip) {
+                throw new Error('JSZip not available. Cannot read .xlsx. Please upload CSV instead.');
+            }
+
+            const arrayBuffer = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = () => reject(new Error('Failed to read Excel file'));
+                reader.readAsArrayBuffer(file);
+            });
+
+            const { headers, data } = await this.parseXlsx(arrayBuffer);
+
+            // Apply into table
+            this.headers = headers;
+            this.data = data;
+            this.originalData = [...this.data];
+            this.filteredData = [...this.data];
+
+            // Reset visibility and apply filename-based presets
+            this.hiddenColumns = new Set();
+            this.maybeApplyCustomerContactPreset();
+
+            // Page size all
+            this.pageSize = 'all';
+            const pageSizeSelect = document.getElementById('pageSize');
+            if (pageSizeSelect) pageSizeSelect.value = 'all';
+
+            // Render
+            this.renderTable();
+            this.showDataContainer();
+            this.performDataAnalysis();
+            this.showSuccessMessage(`Loaded ${this.data.length} rows from ${fileName}`);
+        } catch (err) {
+            console.error('Excel parse error:', err);
+            this.showErrorMessage(err.message || 'Failed to parse Excel file');
+        }
+    }
+
+    async parseXlsx(arrayBuffer) {
+        const zip = await window.JSZip.loadAsync(arrayBuffer);
+
+        const readXml = async (path) => {
+            const entry = zip.file(path);
+            if (!entry) return null;
+            return await entry.async('string');
+        };
+
+        const workbookXml = await readXml('xl/workbook.xml');
+        if (!workbookXml) throw new Error('Invalid .xlsx: workbook.xml missing');
+        const workbookDoc = new DOMParser().parseFromString(workbookXml, 'application/xml');
+        const sheetEl = workbookDoc.getElementsByTagName('sheet')[0];
+        if (!sheetEl) throw new Error('No sheets found in workbook');
+        const relId = sheetEl.getAttribute('r:id') || sheetEl.getAttribute('id');
+
+        let sheetPath = 'xl/worksheets/sheet1.xml';
+        const relsXml = await readXml('xl/_rels/workbook.xml.rels');
+        if (relsXml && relId) {
+            const relsDoc = new DOMParser().parseFromString(relsXml, 'application/xml');
+            const rels = relsDoc.getElementsByTagName('Relationship');
+            for (let i = 0; i < rels.length; i++) {
+                const r = rels[i];
+                if (r.getAttribute('Id') === relId) {
+                    const target = r.getAttribute('Target');
+                    sheetPath = 'xl/' + target.replace(/^\//, '');
+                    break;
+                }
+            }
+        }
+
+        const sheetXml = await readXml(sheetPath);
+        if (!sheetXml) throw new Error('Worksheet not found: ' + sheetPath);
+        const sheetDoc = new DOMParser().parseFromString(sheetXml, 'application/xml');
+
+        // Shared strings
+        const sstXml = await readXml('xl/sharedStrings.xml');
+        let sst = [];
+        if (sstXml) {
+            const sstDoc = new DOMParser().parseFromString(sstXml, 'application/xml');
+            const siNodes = sstDoc.getElementsByTagName('si');
+            for (let i = 0; i < siNodes.length; i++) {
+                const si = siNodes[i];
+                // Concatenate all <t> in this si (handles rich text)
+                const tNodes = si.getElementsByTagName('t');
+                let text = '';
+                for (let j = 0; j < tNodes.length; j++) {
+                    text += tNodes[j].textContent;
+                }
+                sst.push(text);
+            }
+        }
+
+        // Parse rows
+        const rows = sheetDoc.getElementsByTagName('row');
+        const table = [];
+        let maxCol = 0;
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const cells = row.getElementsByTagName('c');
+            const rowArr = [];
+            for (let j = 0; j < cells.length; j++) {
+                const c = cells[j];
+                const ref = c.getAttribute('r') || '';
+                const colLetters = ref.replace(/\d+/g, '') || this.indexToLetters(j);
+                const colIdx = this.colLettersToIndex(colLetters);
+                if (colIdx + 1 > maxCol) maxCol = colIdx + 1;
+
+                let value = '';
+                const t = c.getAttribute('t');
+                if (t === 's') {
+                    const v = c.getElementsByTagName('v')[0];
+                    const idx = v ? parseInt(v.textContent, 10) : NaN;
+                    value = isNaN(idx) ? '' : (sst[idx] ?? '');
+                } else if (t === 'inlineStr') {
+                    const tNode = c.getElementsByTagName('t')[0];
+                    value = tNode ? tNode.textContent : '';
+                } else {
+                    const v = c.getElementsByTagName('v')[0];
+                    value = v ? v.textContent : '';
+                }
+
+                rowArr[colIdx] = value;
+            }
+            table.push(rowArr);
+        }
+
+        // Normalize rows to same length and split header/data
+        const norm = table.map(r => {
+            const arr = new Array(maxCol).fill('');
+            for (let i = 0; i < r.length; i++) if (r[i] !== undefined) arr[i] = r[i];
+            return arr;
+        }).filter(r => r.some(cell => (cell ?? '').toString().trim() !== ''));
+
+        if (norm.length === 0) return { headers: [], data: [] };
+
+        // First non-empty row as header
+        const headers = norm[0].map((h, idx) => {
+            const name = (h ?? '').toString().trim();
+            return name || `Column ${this.indexToLetters(idx)}`;
+        });
+        const data = norm.slice(1);
+        return { headers, data };
+    }
+
+    colLettersToIndex(letters) {
+        let n = 0;
+        for (let i = 0; i < letters.length; i++) {
+            n = n * 26 + (letters.charCodeAt(i) - 64);
+        }
+        return n - 1; // zero-based
+    }
+
+    indexToLetters(idx) {
+        let s = '';
+        idx = idx + 1;
+        while (idx > 0) {
+            const mod = (idx - 1) % 26;
+            s = String.fromCharCode(65 + mod) + s;
+            idx = Math.floor((idx - mod) / 26);
+        }
+        return s;
+    }
+
+    async processXlsFile(file, fileName, fileSize) {
+        try {
+            // Read initial bytes as ArrayBuffer for detection
+            const buffer = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = () => reject(new Error('Failed to read XLS file'));
+                reader.readAsArrayBuffer(file);
+            });
+
+            const bytes = new Uint8Array(buffer);
+            const headBytes = bytes.slice(0, Math.min(4096, bytes.length));
+            const headText = new TextDecoder('utf-8', { fatal: false }).decode(headBytes);
+
+            // Case 0: Misnamed OOXML stored as .xls (zip with [Content_Types].xml)
+            try {
+                if (window.JSZip) {
+                    const zip = await window.JSZip.loadAsync(buffer);
+                    if (zip.file('[Content_Types].xml') && (zip.file('xl/workbook.xml') || zip.file('xl/_rels/workbook.xml.rels'))) {
+                        const parsed = await this.parseXlsx(buffer);
+                        this.headers = parsed.headers; this.data = parsed.data;
+                        this.originalData = [...this.data]; this.filteredData = [...this.data];
+                        this.hiddenColumns = new Set();
+                        this.maybeApplyCustomerContactPreset();
+                        this.pageSize = 'all';
+                        const pageSizeSelect = document.getElementById('pageSize');
+                        if (pageSizeSelect) pageSizeSelect.value = 'all';
+                        this.renderTable(); this.showDataContainer(); this.performDataAnalysis();
+                        this.showSuccessMessage(`Loaded ${this.data.length} rows from ${fileName}`);
+                        return;
+                    }
+                }
+            } catch (e) {
+                // Not a valid zip or not OOXML - continue to other heuristics
+            }
+
+            // Case 1: Excel 2003 XML Spreadsheet under .xls
+            if (/\<\?xml/.test(headText) && /\<Workbook[\s>]/i.test(headText)) {
+                const fullText = await new Promise((resolve, reject) => {
+                    const r = new FileReader();
+                    r.onload = (e) => resolve(e.target.result);
+                    r.onerror = () => reject(new Error('Failed to read XLS XML'));
+                    r.readAsText(file);
+                });
+                const { headers, data } = this.parseExcel2003Xml(fullText);
+                this.headers = headers; this.data = data;
+                this.originalData = [...data]; this.filteredData = [...data];
+                this.hiddenColumns = new Set();
+                this.maybeApplyCustomerContactPreset();
+                this.pageSize = 'all';
+                const pageSizeSelect = document.getElementById('pageSize');
+                if (pageSizeSelect) pageSizeSelect.value = 'all';
+                this.renderTable(); this.showDataContainer(); this.performDataAnalysis();
+                this.showSuccessMessage(`Loaded ${data.length} rows from ${fileName}`);
+                return;
+            }
+
+            // Case 2: HTML table exported as .xls
+            if (/\<html[\s>]/i.test(headText) || /\<table[\s>]/i.test(headText)) {
+                const fullText = await new Promise((resolve, reject) => {
+                    const r = new FileReader();
+                    r.onload = (e) => resolve(e.target.result);
+                    r.onerror = () => reject(new Error('Failed to read XLS HTML'));
+                    r.readAsText(file);
+                });
+                const { headers, data } = this.parseHtmlTable(fullText);
+                this.headers = headers; this.data = data;
+                this.originalData = [...data]; this.filteredData = [...data];
+                this.hiddenColumns = new Set();
+                this.maybeApplyCustomerContactPreset();
+                this.pageSize = 'all';
+                const pageSizeSelect = document.getElementById('pageSize');
+                if (pageSizeSelect) pageSizeSelect.value = 'all';
+                this.renderTable(); this.showDataContainer(); this.performDataAnalysis();
+                this.showSuccessMessage(`Loaded ${data.length} rows from ${fileName}`);
+                return;
+            }
+
+            // Case 3: OLE Compound File header indicates true binary XLS
+            const oleHeader = [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1];
+            const isOle = oleHeader.every((b, i) => bytes[i] === b);
+            if (isOle) {
+                throw new Error('Legacy binary XLS detected. Please resave as .xlsx or CSV and upload again.');
+            }
+
+            // Case 4: Treat as delimited text (some systems output CSV but name it .xls)
+            const fullText = await new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = (e) => resolve(e.target.result);
+                r.onerror = () => reject(new Error('Failed to read XLS as text'));
+                r.readAsText(file);
+            });
+
+            // Heuristic: choose delimiter by counting candidates in the header line
+            const firstLine = (fullText.split(/\r?\n/)[0] || '');
+            const counts = {
+                comma: (firstLine.match(/,/g) || []).length,
+                tab: (firstLine.match(/\t/g) || []).length,
+                pipe: (firstLine.match(/\|/g) || []).length,
+                semicolon: (firstLine.match(/;/g) || []).length,
+            };
+            const pick = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+            let delimiter = ',';
+            if (pick && pick[1] > 0) {
+                if (pick[0] === 'tab') delimiter = '\t';
+                else if (pick[0] === 'pipe') delimiter = '|';
+                else if (pick[0] === 'semicolon') delimiter = ';';
+                else delimiter = ',';
+            }
+
+            // Prepare virtual file for existing parse pipeline
+            this.currentFile = { name: fileName.replace(/\.xls$/i, '.csv'), content: fullText, isVirtual: true };
+            this.pendingParserType = 'delimited';
+            this.pendingDelimiter = delimiter;
+
+            // Ensure UI hints show and enable parse
+            const parsingOptionsEl = document.getElementById('parsingOptions');
+            if (parsingOptionsEl) parsingOptionsEl.style.display = 'block';
+            const parseBtnEl = document.getElementById('parseButton');
+            if (parseBtnEl) parseBtnEl.disabled = false;
+            const uploadZone = document.getElementById('uploadZone');
+            if (uploadZone) {
+                uploadZone.innerHTML = `
+                    <i class="material-icons">description</i>
+                    <h3>${this.currentFile.name}</h3>
+                    <p>Detected delimited text under .xls</p>
+                    <p><small>Delimiter: ${delimiter === '\\t' ? 'Tab' : delimiter}</small></p>
+                `;
+            }
+
+            // Auto-parse
+            await this.parseFile();
+            return;
+
+            // Unknown format under .xls
+            // throw new Error('Unrecognized .xls format. Try saving as .xlsx or CSV.');
+        } catch (err) {
+            console.error('XLS handling error:', err);
+            this.showErrorMessage(err.message);
+        }
+    }
+
+    parseExcel2003Xml(xmlText) {
+        const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+        const tableEls = this.getByLocalName(doc, 'Table');
+        const table = tableEls[0] || doc;
+        const rowEls = this.getByLocalName(table, 'Row');
+        const rows = [];
+
+        let maxCol = 0;
+        rowEls.forEach((row) => {
+            const cells = this.getByLocalName(row, 'Cell');
+            const arr = [];
+            let colIdx = 0;
+            cells.forEach((cell) => {
+                // Handle ss:Index to skip columns
+                const idxAttr = cell.getAttribute('ss:Index') || cell.getAttribute('Index');
+                if (idxAttr) {
+                    const idx = parseInt(idxAttr, 10) - 1; // 1-based
+                    if (!isNaN(idx)) colIdx = idx;
+                }
+                const dataEl = this.getByLocalName(cell, 'Data')[0];
+                const val = dataEl ? dataEl.textContent : '';
+                arr[colIdx] = val;
+                colIdx += 1;
+            });
+            if (arr.length) {
+                maxCol = Math.max(maxCol, arr.length);
+                rows.push(arr);
+            }
+        });
+
+        const norm = rows.map(r => {
+            const a = new Array(maxCol).fill('');
+            for (let i = 0; i < r.length; i++) if (r[i] !== undefined) a[i] = r[i];
+            return a;
+        }).filter(r => r.some(c => (c ?? '').toString().trim() !== ''));
+
+        if (norm.length === 0) return { headers: [], data: [] };
+        const headers = norm[0].map((h, i) => (h || `Column ${this.indexToLetters(i)}`));
+        const data = norm.slice(1);
+        return { headers, data };
+    }
+
+    parseHtmlTable(htmlText) {
+        const doc = new DOMParser().parseFromString(htmlText, 'text/html');
+        const table = doc.querySelector('table');
+        if (!table) return { headers: [], data: [] };
+
+        const rows = Array.from(table.rows).map(tr => Array.from(tr.cells).map(td => td.textContent.trim()))
+            .filter(r => r.some(c => c && c.trim() !== ''));
+        if (rows.length === 0) return { headers: [], data: [] };
+        const headers = rows[0].map((h, i) => h || `Column ${this.indexToLetters(i)}`);
+        const data = rows.slice(1);
+        return { headers, data };
+    }
+
+    getByLocalName(root, local) {
+        return Array.from(root.getElementsByTagName('*')).filter(el => (el.localName || el.tagName).toLowerCase() === local.toLowerCase());
     }
 
     async processGzipFile(file, fileName, fileSize) {
@@ -318,6 +706,7 @@ class TextParser {
                     content: extractedContent.content,
                     isVirtual: true
                 };
+                this.currentFileName = extractedContent.name;
 
                 // Show parsing options if present
                 const parsingOptionsEl = document.getElementById('parsingOptions');
@@ -464,50 +853,50 @@ class TextParser {
         // File name based detection (highest priority)
         if (cleanName.startsWith('deposits_balance_file') || baseName.startsWith('deposits_balance_file')) {
             setType('bank-deposits');
-            console.log('Auto-detected: Bank Deposits file (filename pattern match)');
+            // autodetect note
             return;
         }
 
         if (cleanName.startsWith('bgl_accounts_with_non_zero_balance') || baseName.startsWith('bgl_accounts_with_non_zero_balance')) {
             setType('bgl-accounts');
-            console.log('Auto-detected: BGL Accounts file (filename pattern match)');
+            
             return;
         }
 
         if (cleanName.startsWith('new_cc_od_balance_file') || baseName.startsWith('new_cc_od_balance_file')) {
             setType('new-cc-od-balance');
-            console.log('Auto-detected: New CC/OD Balance file (filename pattern match)');
+            
             return;
         }
 
         if (cleanName.startsWith('cc_od_balance_file') || baseName.startsWith('cc_od_balance_file')) {
             setType('cc-od-balance');
-            console.log('Auto-detected: CC/OD Balance file (filename pattern match)');
+            
             return;
         }
 
         if (cleanName.startsWith('sdv_accounts_as_on_date') || baseName.startsWith('sdv_accounts_as_on_date')) {
             setType('sdv-accounts');
-            console.log('Auto-detected: SDV Accounts file (filename pattern match)');
+            
             return;
         }
 
         if (cleanName.startsWith('new_loansbalancefile') || baseName.startsWith('new_loansbalancefile')) {
             setType('new-loans-balance');
-            console.log('Auto-detected: New Loans Balance file (filename pattern match)');
+            
             return;
         }
 
         if (cleanName.startsWith('loansbalancefile') || baseName.startsWith('loansbalancefile')) {
             setType('loans-balance');
-            console.log('Auto-detected: Loans Balance file (filename pattern match)');
+            
             return;
         }
 
         if (cleanName.startsWith('branchwise_cgtmse_claim_lodged_to_portal_via_api_and_accepted') || 
             baseName.startsWith('branchwise_cgtmse_claim_lodged_to_portal_via_api_and_accepted')) {
             setType('cgtmse-claims');
-            console.log('Auto-detected: CGTMSE Claims file (filename pattern match)');
+            
             return;
         }
 
@@ -516,38 +905,38 @@ class TextParser {
             case 'csv':
                 setType('delimited');
                 setDelimiter(',');
-                console.log('Auto-detected: CSV file');
+                
                 break;
             case 'tsv':
                 setType('delimited');
                 setDelimiter('\t');
-                console.log('Auto-detected: TSV file');
+                
                 break;
             case 'txt':
             case 'rpt':
                 // Content-based detection for text files
                 if (baseName.includes('deposit')) {
                     setType('bank-deposits');
-                    console.log('Auto-detected: Bank Deposits file (content hint)');
+                    
                 } else if (baseName.includes('bgl') || baseName.includes('account') && baseName.includes('balance')) {
                     setType('bgl-accounts');
-                    console.log('Auto-detected: BGL Accounts file (content hint)');
+                    
                 } else {
                     setType('fixed-width');
-                    console.log('Auto-detected: Fixed-width text file');
+                    
                 }
                 break;
             case 'log':
                 setType('regex');
-                console.log('Auto-detected: Log file for regex parsing');
+                
                 break;
             case '': // Files without extension
                 setType('fixed-width');
-                console.log('Auto-detected: Fixed-width file (no extension)');
+                
                 break;
             default:
                 setType('delimited');
-                console.log('Auto-detected: Default to delimited parsing');
+                
         }
     }
 
@@ -558,7 +947,7 @@ class TextParser {
             throw new Error(`Unsupported parser type: ${parserType}. Available parsers: ${Object.keys(this.parsers).join(', ')}`);
         }
 
-        console.log(`Using ${parserType} parser for file processing`);
+        
         return await parser(content);
     }
 
@@ -578,9 +967,9 @@ class TextParser {
         await new Promise(resolve => setTimeout(resolve, 100));
 
         try {
-            console.log('Starting file parsing...');
+            
             const content = await this.readFile(this.currentFile);
-            console.log('File read complete, content length:', content.length);
+            
             
             // Apply any pending UI settings now that we are parsing
             const parserTypeEl = document.getElementById('parserType');
@@ -596,16 +985,20 @@ class TextParser {
             }
 
             const parserType = parserTypeEl ? parserTypeEl.value : (this.pendingParserType || 'delimited');
-            console.log('Using parser type:', parserType);
+            
             
             // Use parser factory for better extensibility
             const parsedData = await this.createParser(parserType, content);
-            console.log('Parsing complete, rows:', parsedData.data.length);
+            
 
             this.data = parsedData.data;
             this.headers = parsedData.headers;
             this.originalData = [...this.data];
             this.filteredData = [...this.data];
+
+            // Reset visibility for a fresh dataset and apply any filename-based presets
+            this.hiddenColumns = new Set();
+            this.maybeApplyCustomerContactPreset();
 
             // Set page size to "all" by default and update the dropdown
             this.pageSize = 'all';
@@ -614,7 +1007,7 @@ class TextParser {
                 pageSizeSelect.value = 'all';
             }
 
-            console.log('Rendering table...');
+            
             this.renderTable();
             this.showDataContainer();
             
@@ -636,7 +1029,28 @@ class TextParser {
                 parseButton.disabled = false;
                 parseButton.innerHTML = 'Parse File';
             }
-            console.log('Parsing complete, loading hidden');
+            
+        }
+    }
+
+    // If filename starts with CUSTOMER_CONTACT*, hide all columns except the allowed set initially
+    maybeApplyCustomerContactPreset() {
+        try {
+            const fname = (this.currentFileName || this.currentFile?.name || '').toString().trim().toLowerCase();
+            if (!fname.startsWith('customer_contact')) return;
+            if (!Array.isArray(this.headers) || this.headers.length === 0) return;
+
+            const allowed = [
+                'CUSTOMER_NO','DEPOSIT_BAL','LOAN_BAL','SB_BAL','CREATE_DT', 'CD_BAL','NAME','ADDRESS','MOBILE_NO','CUST_TAX_PAN','DOB','GENDER','INTERNET_BANKING','MOBILE_BANKING','ATM_FLAG','POSTCODE','CUSTOMER_TYPE'
+            ];
+            const allowedSet = new Set(allowed.map(h => h.trim().toUpperCase()));
+
+            this.headers.forEach((h, idx) => {
+                const norm = (h ?? '').toString().trim().toUpperCase();
+                if (!allowedSet.has(norm)) this.hiddenColumns.add(idx);
+            });
+        } catch (e) {
+            console.warn('Failed to apply CUSTOMER_CONTACT preset:', e);
         }
     }
 
@@ -670,19 +1084,19 @@ class TextParser {
                 
                 // Validate that we got meaningful data
                 if (result.data && result.data.length > 0) {
-                    console.log(`Bank deposits parser successfully parsed ${result.data.length} rows`);
+                    
                     return { headers: result.headers, data: result.data };
                 } else {
                     console.warn('Bank deposits parser returned no data, falling back to basic parsing');
                 }
             } catch (error) {
                 console.error('Bank deposits parser failed:', error);
-                console.log('Falling back to basic fixed-width parsing');
+                
             }
         }
         
         // Fallback to original parsing logic
-        console.log('Using fallback bank deposits parsing');
+        
         return this.parseBankDepositsFallback(content);
     }
     
@@ -821,12 +1235,12 @@ class TextParser {
         );
         
         if (bglParser) {
-            console.log('Using registered BGL accounts parser');
+            
             return bglParser.parse(content);
         }
         
         // Fallback parsing if no registered parser available
-        console.log('Using fallback BGL accounts parsing');
+        
         return this.parseBGLAccountsFallback(content);
     }
     
@@ -1239,16 +1653,12 @@ class TextParser {
 
     parseCGTMSEClaims(content) {
         // Delegate to specialized CGTMSE parser if available
-        if (typeof parseCGTMSEClaims === 'function') {
-            console.log('Using specialized CGTMSE parser');
+    if (typeof parseCGTMSEClaims === 'function') {
             const result = parseCGTMSEClaims(content);
-            console.log('CGTMSE parser result:', result);
             
             if (result.success) {
-                console.log('Converting data to array format, data sample:', result.data[0]);
                 const convertedData = result.data.map(row => {
                     const values = Object.values(row);
-                    console.log('Converted row sample:', values.slice(0, 5)); // Log first 5 values
                     return values;
                 });
                 return {
@@ -1260,7 +1670,6 @@ class TextParser {
             }
         }
         
-        console.log('Using fallback CGTMSE parser');
         // Fallback to basic pipe-delimited parsing
         const lines = content.split('\n').filter(line => line.trim());
         
@@ -1448,7 +1857,14 @@ class TextParser {
                 th.addEventListener('click', () => this.sortByColumn(index));
                 
                 // Add filtered column styling
-                const headerActiveFilters = this.columnFilters[index] ? this.columnFilters[index].length : 0;
+                let headerActiveFilters = 0;
+                if (this.columnFilters[index]) {
+                    if (Array.isArray(this.columnFilters[index])) {
+                        headerActiveFilters = this.columnFilters[index].length;
+                    } else if (typeof this.columnFilters[index] === 'object') {
+                        headerActiveFilters = 1; // numeric/date filter applied
+                    }
+                }
                 if (headerActiveFilters > 0) {
                     th.classList.add('filtered-column');
                 }
@@ -1624,32 +2040,27 @@ class TextParser {
         // Use setTimeout to allow the loading animation to show
         setTimeout(() => {
             this.filteredData.sort((a, b) => {
-                const aVal = a[columnIndex] || '';
-                const bVal = b[columnIndex] || '';
-                
-                // Check if values look like dates (DD/MM/YYYY format)
-                const dateRegex = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
-                const aIsDate = dateRegex.test(aVal);
-                const bIsDate = dateRegex.test(bVal);
-                
+                const aVal = a[columnIndex] ?? '';
+                const bVal = b[columnIndex] ?? '';
+
+                // Generalized date parsing (supports dd/mm/yyyy, dd-mm-yyyy, yyyy-mm-dd, and Excel serials)
+                const aDate = this.parseAnyDate(aVal);
+                const bDate = this.parseAnyDate(bVal);
+
                 let comparison;
-                if (aIsDate && bIsDate) {
-                    // Parse dates for comparison
-                    const aDate = this.parseDate(aVal);
-                    const bDate = this.parseDate(bVal);
+                if (aDate && bDate) {
                     comparison = aDate.getTime() - bDate.getTime();
                 } else {
                     // Try to parse as numbers
-                    const aNum = parseFloat(aVal.replace(/[,\s]/g, ''));
-                    const bNum = parseFloat(bVal.replace(/[,\s]/g, ''));
-                    
+                    const aNum = parseFloat(String(aVal).replace(/[\,\s]/g, ''));
+                    const bNum = parseFloat(String(bVal).replace(/[\,\s]/g, ''));
                     if (!isNaN(aNum) && !isNaN(bNum)) {
                         comparison = aNum - bNum;
                     } else {
-                        comparison = aVal.localeCompare(bVal);
+                        comparison = String(aVal).localeCompare(String(bVal));
                     }
                 }
-                
+
                 return this.sortDirection === 'asc' ? comparison : -comparison;
             });
 
@@ -1659,9 +2070,47 @@ class TextParser {
     }
 
     parseDate(dateStr) {
-        // Parse DD/MM/YYYY format
+        // Backwards compatibility: DD/MM/YYYY only
         const [day, month, year] = dateStr.split('/').map(Number);
         return new Date(year, month - 1, day);
+    }
+
+    // Parse various date formats and Excel serials; return Date or null
+    parseAnyDate(value) {
+        if (value === null || value === undefined) return null;
+        const raw = String(value).trim();
+        if (!raw) return null;
+
+        // Excel serial date (rough window 1900-01-01..2149-12-31)
+        const n = Number(raw);
+        if (!isNaN(n) && isFinite(n) && n > 10000 && n < 90000) {
+            return this.excelSerialToDate(n);
+        }
+
+        // dd/mm/yyyy or dd-mm-yyyy
+        let m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+        if (m) {
+            const d = parseInt(m[1], 10), mo = parseInt(m[2], 10), y = parseInt(m[3], 10);
+            const dt = new Date(y, mo - 1, d);
+            if (dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d) return dt;
+        }
+
+        // yyyy-mm-dd
+        m = raw.match(/^(\d{4})[\-](\d{1,2})[\-](\d{1,2})$/);
+        if (m) {
+            const y = parseInt(m[1], 10), mo = parseInt(m[2], 10), d = parseInt(m[3], 10);
+            const dt = new Date(y, mo - 1, d);
+            if (dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d) return dt;
+        }
+
+        return null;
+    }
+
+    excelSerialToDate(serial) {
+        // Excel's day 1 is 1899-12-31 (with 1900 leap-year bug). JS date from 1899-12-30 is standard workaround
+        const base = new Date(Date.UTC(1899, 11, 30));
+        const ms = Math.round(serial * 24 * 60 * 60 * 1000);
+        return new Date(base.getTime() + ms);
     }
 
     toggleColumn(columnIndex) {
@@ -1690,14 +2139,17 @@ class TextParser {
         // Start with all data
         let filtered = [...this.originalData];
         
-        // Apply column filters first
+        // Apply column filters first (support array-based and numeric/date object filters)
         Object.keys(this.columnFilters).forEach(columnIndex => {
-            const allowedValues = this.columnFilters[columnIndex];
-            if (allowedValues && allowedValues.length > 0) {
+            const rule = this.columnFilters[columnIndex];
+            if (!rule) return;
+            if (Array.isArray(rule) && rule.length > 0) {
                 filtered = filtered.filter(row => {
-                    const cellValue = row[columnIndex] || '';
-                    return allowedValues.includes(cellValue);
+                    const cellValue = row[columnIndex] ?? '';
+                    return rule.includes(cellValue);
                 });
+            } else if (typeof rule === 'object') {
+                filtered = filtered.filter(row => this.applyAdvancedFilter(rule, row[columnIndex]));
             }
         });
         
@@ -1794,12 +2246,15 @@ class TextParser {
         
         // Apply column filters first
         Object.keys(this.columnFilters).forEach(columnIndex => {
-            const allowedValues = this.columnFilters[columnIndex];
-            if (allowedValues && allowedValues.length > 0) {
+            const rule = this.columnFilters[columnIndex];
+            if (!rule) return;
+            if (Array.isArray(rule) && rule.length > 0) {
                 filtered = filtered.filter(row => {
-                    const cellValue = row[columnIndex] || '';
-                    return allowedValues.includes(cellValue);
+                    const cellValue = row[columnIndex] ?? '';
+                    return rule.includes(cellValue);
                 });
+            } else if (typeof rule === 'object') {
+                filtered = filtered.filter(row => this.applyAdvancedFilter(rule, row[columnIndex]));
             }
         });
         
@@ -1962,7 +2417,7 @@ class TextParser {
             // Account status distribution - only the requested ones with proper mapping
             if (banking.accountAnalysis.statusDistribution) {
                 // Debug: log available status keys
-                console.log('Available status keys:', Object.keys(banking.accountAnalysis.statusDistribution));
+                // Debug: status keys
                 
                 const statusMapping = {
                     'Open Account': ['OPEN', 'ACTIVE', 'OPERATIONAL', 'Open Account', 'OPEN ACCOUNT'],
@@ -1979,7 +2434,7 @@ class TextParser {
                         const keyCount = banking.accountAnalysis.statusDistribution[key] || 0;
                         count += keyCount;
                         if (keyCount > 0) {
-                            console.log(`Found ${keyCount} accounts with status: ${key}`);
+                            // Debug: key distribution
                         }
                     });
                     
@@ -1999,7 +2454,7 @@ class TextParser {
         // Check if filtering is disabled for this column
         const headerName = this.headers[columnIndex];
         if (this.shouldDisableFilter(columnIndex, headerName)) {
-            console.log(`Filtering disabled for column: ${headerName}`);
+            // Debug: filtering disabled for column
             return; // Exit early for disabled columns
         }
         
@@ -2019,8 +2474,9 @@ class TextParser {
             uniqueValues.unshift(''); // Add blank at the beginning
         }
         
-        // Check if this appears to be a date column
-        const isDateColumn = this.isDateColumn(uniqueValues);
+    // Check if this appears to be a date or numeric column
+    const isDateColumn = this.isDateColumn(uniqueValues, headerName);
+    const isNumericColumn = !isDateColumn && this.isNumericColumn(allValues);
         
         // Create dropdown
         const dropdown = document.createElement('div');
@@ -2040,8 +2496,13 @@ class TextParser {
             padding: 8px;
         `;
         
+        let filterMode = 'regular';
         if (isDateColumn) {
+            filterMode = 'date';
             this.renderDateFilter(dropdown, columnIndex, uniqueValues);
+        } else if (isNumericColumn) {
+            filterMode = 'number';
+            this.renderNumericFilter(dropdown, columnIndex, allValues);
         } else {
             this.renderRegularFilter(dropdown, columnIndex, uniqueValues);
         }
@@ -2049,14 +2510,13 @@ class TextParser {
         // Position and show dropdown
         buttonElement.parentElement.appendChild(dropdown);
         
-        // Store the current filter state for comparison
-        const originalFilters = this.columnFilters[columnIndex] ? [...this.columnFilters[columnIndex]] : [];
-        
         // Close dropdown when clicking outside and auto-apply filters
         const closeDropdown = (e) => {
             if (!dropdown.contains(e.target) && e.target !== buttonElement) {
                 // Auto-apply filters when clicking outside
-                this.autoApplyFilters(dropdown, columnIndex, isDateColumn, uniqueValues);
+                if (filterMode !== 'number') {
+                    this.autoApplyFilters(dropdown, columnIndex, isDateColumn, uniqueValues);
+                }
                 dropdown.remove();
                 document.removeEventListener('click', closeDropdown);
             }
@@ -2104,42 +2564,38 @@ class TextParser {
     getMonthDates(year, month, allValues) {
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
                            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const monthNumber = monthNames.indexOf(month) + 1;
-        
-        return allValues.filter(dateStr => {
-            if (this.isValidDate(dateStr)) {
-                const [day, dateMonth, dateYear] = dateStr.split('/').map(Number);
-                return dateYear === parseInt(year) && dateMonth === monthNumber;
-            }
-            return false;
-        });
+        const monthNumber = monthNames.indexOf(month);
+        return allValues.filter(val => {
+            const dt = this.parseAnyDate(val);
+            if (!dt) return false;
+            return dt.getFullYear() === parseInt(year) && dt.getMonth() === monthNumber;
+        }).map(v => String(v));
     }
 
-    isDateColumn(values) {
-        // Check if at least 70% of values look like dates
-        const dateRegex = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
-        const dateCount = values.filter(val => dateRegex.test(val)).length;
-        return values.length > 0 && (dateCount / values.length) >= 0.7;
+    isDateColumn(values, headerName = '') {
+        if (!values || values.length === 0) return false;
+        const dateCount = values.filter(val => !!this.parseAnyDate(val)).length;
+        const ratio = dateCount / values.length;
+        const header = String(headerName || '').toLowerCase();
+        const headerLooksDate = /(date|dob|doj|opening|open\s*date|maturity|expiry|exp|value\s*date|posting\s*date)/i.test(header);
+        return headerLooksDate ? ratio >= 0.4 : ratio >= 0.6;
     }
 
     renderDateFilter(dropdown, columnIndex, dateValues) {
-        // Parse and group dates by year and month
+        // Parse and group dates by year and month using generalized parsing
         const dateGroups = {};
-        
-        dateValues.forEach(dateStr => {
-            if (this.isValidDate(dateStr)) {
-                const [day, month, year] = dateStr.split('/');
-                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                                 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                const monthName = monthNames[parseInt(month) - 1];
-                
-                if (!dateGroups[year]) {
-                    dateGroups[year] = {};
-                }
-                if (!dateGroups[year][monthName]) {
-                    dateGroups[year][monthName] = [];
-                }
-                dateGroups[year][monthName].push(dateStr);
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                           'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        dateValues.forEach(val => {
+            const dt = this.parseAnyDate(val);
+            if (dt) {
+                const year = String(dt.getFullYear());
+                const monthName = monthNames[dt.getMonth()];
+                if (!dateGroups[year]) dateGroups[year] = {};
+                if (!dateGroups[year][monthName]) dateGroups[year][monthName] = [];
+                // Preserve the original cell value for exact matching later
+                dateGroups[year][monthName].push(String(val));
             }
         });
         
@@ -2150,7 +2606,10 @@ class TextParser {
         const selectAllCheckbox = document.createElement('input');
         selectAllCheckbox.type = 'checkbox';
         selectAllCheckbox.id = 'selectAll';
-        selectAllCheckbox.checked = !this.columnFilters[columnIndex] || this.columnFilters[columnIndex].length === 0;
+        {
+            const cf = this.columnFilters[columnIndex];
+            selectAllCheckbox.checked = !cf || (Array.isArray(cf) && cf.length === 0);
+        }
         
         const selectAllLabel = document.createElement('label');
         selectAllLabel.htmlFor = 'selectAll';
@@ -2217,7 +2676,7 @@ class TextParser {
         });
         
         // Set initial checked states
-        const activeFilters = this.columnFilters[columnIndex] || [];
+    const activeFilters = Array.isArray(this.columnFilters[columnIndex]) ? this.columnFilters[columnIndex] : [];
         if (activeFilters.length === 0) {
             // All selected
             allCheckboxes.forEach(cb => cb.checked = true);
@@ -2293,7 +2752,10 @@ class TextParser {
         const selectAllCheckbox = document.createElement('input');
         selectAllCheckbox.type = 'checkbox';
         selectAllCheckbox.id = 'selectAll';
-        selectAllCheckbox.checked = !this.columnFilters[columnIndex] || this.columnFilters[columnIndex].length === 0;
+        {
+            const cf = this.columnFilters[columnIndex];
+            selectAllCheckbox.checked = !cf || (Array.isArray(cf) && cf.length === 0);
+        }
         
         const selectAllLabel = document.createElement('label');
         selectAllLabel.htmlFor = 'selectAll';
@@ -2313,9 +2775,10 @@ class TextParser {
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.value = value;
-            checkbox.checked = !this.columnFilters[columnIndex] || 
-                              this.columnFilters[columnIndex].length === 0 || 
-                              this.columnFilters[columnIndex].includes(value);
+            {
+                const cf = this.columnFilters[columnIndex];
+                checkbox.checked = !cf || (Array.isArray(cf) && (cf.length === 0 || cf.includes(value)));
+            }
             
             const label = document.createElement('label');
             // Display meaningful text for blank values
@@ -2350,6 +2813,108 @@ class TextParser {
         selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
     }
 
+    // Determine if a column is numeric-like (>=60% numeric values)
+    isNumericColumn(values) {
+        if (!values || values.length === 0) return false;
+        let numCount = 0;
+        for (const v of values) {
+            const n = parseFloat(String(v).replace(/[\s,]/g, ''));
+            if (!isNaN(n)) numCount++;
+        }
+        return (numCount / values.length) >= 0.6;
+    }
+
+    // Apply object-based advanced filters (numeric/date comparisons)
+    applyAdvancedFilter(rule, value) {
+        if (!rule || typeof rule !== 'object') return true;
+        const raw = value ?? '';
+        const asNumber = parseFloat(String(raw).replace(/[\s,]/g, ''));
+        const asDate = this.parseAnyDate(raw);
+
+        switch (rule.type) {
+            case 'number': {
+                if (isNaN(asNumber)) return false;
+                const a = Number(rule.a);
+                const b = Number(rule.b);
+                switch (rule.op) {
+                    case '>': return asNumber > a;
+                    case '>=': return asNumber >= a;
+                    case '=': return asNumber === a;
+                    case '<=': return asNumber <= a;
+                    case '<': return asNumber < a;
+                    case 'between': return asNumber >= Math.min(a,b) && asNumber <= Math.max(a,b);
+                    default: return true;
+                }
+            }
+            case 'date': {
+                if (!asDate) return false;
+                const a = this.parseAnyDate(rule.a);
+                const b = this.parseAnyDate(rule.b);
+                const t = asDate.getTime();
+                const at = a ? a.getTime() : NaN;
+                const bt = b ? b.getTime() : NaN;
+                switch (rule.op) {
+                    case 'after': return !isNaN(at) ? t > at : true;
+                    case 'on': return !isNaN(at) ? (asDate.toDateString() === a.toDateString()) : true;
+                    case 'before': return !isNaN(at) ? t < at : true;
+                    case 'between': return !isNaN(at) && !isNaN(bt) ? (t >= Math.min(at, bt) && t <= Math.max(at, bt)) : true;
+                    default: return true;
+                }
+            }
+            default:
+                return true;
+        }
+    }
+
+    // Render numeric filter UI for a column
+    renderNumericFilter(dropdown, columnIndex, allValues) {
+        // Container
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'display:flex; flex-direction:column; gap:6px;';
+
+        // Operator select
+        const op = document.createElement('select');
+        ['>', '>=', '=', '<=', '<', 'between'].forEach(v => {
+            const o = document.createElement('option'); o.value = v; o.textContent = v; op.appendChild(o);
+        });
+
+        // Inputs
+        const inputA = document.createElement('input');
+        inputA.type = 'number';
+        inputA.placeholder = 'Value';
+        inputA.style.padding = '4px';
+
+        const inputB = document.createElement('input');
+        inputB.type = 'number';
+        inputB.placeholder = 'And value';
+        inputB.style.padding = '4px';
+        inputB.style.display = 'none';
+
+        op.addEventListener('change', () => {
+            inputB.style.display = op.value === 'between' ? 'block' : 'none';
+        });
+
+        // Pre-fill from existing filter if any
+        const existing = this.columnFilters[columnIndex];
+        if (existing && typeof existing === 'object' && existing.type === 'number') {
+            op.value = existing.op || '>';
+            inputA.value = existing.a ?? '';
+            inputB.value = existing.b ?? '';
+            inputB.style.display = op.value === 'between' ? 'block' : 'none';
+        }
+
+        wrapper.appendChild(op);
+        wrapper.appendChild(inputA);
+        wrapper.appendChild(inputB);
+        dropdown.appendChild(wrapper);
+
+        // Buttons
+        this.addFilterButtons(dropdown, columnIndex, () => {
+            const rule = { type: 'number', op: op.value, a: inputA.value, b: inputB.value };
+            return rule;
+        }, allValues);
+    }
+
     addFilterButtons(dropdown, columnIndex, getSelectedValues, allValues) {
         const buttonDiv = document.createElement('div');
         buttonDiv.style.cssText = 'padding: 8px 0; border-top: 1px solid #eee; margin-top: 8px;';
@@ -2361,13 +2926,18 @@ class TextParser {
             this.showLoading('Applying filters...');
             
             setTimeout(() => {
-                const selectedValues = getSelectedValues();
-                
-                if (selectedValues.length === allValues.length) {
-                    // All selected = no filter
-                    delete this.columnFilters[columnIndex];
+                const selection = getSelectedValues();
+                // If selection is an array, handle as value whitelist; otherwise store as rule object
+                if (Array.isArray(selection)) {
+                    if (selection.length === allValues.length) {
+                        delete this.columnFilters[columnIndex];
+                    } else {
+                        this.columnFilters[columnIndex] = selection;
+                    }
+                } else if (selection && typeof selection === 'object') {
+                    this.columnFilters[columnIndex] = selection;
                 } else {
-                    this.columnFilters[columnIndex] = selectedValues;
+                    delete this.columnFilters[columnIndex];
                 }
                 
                 this.performFuzzySearch();

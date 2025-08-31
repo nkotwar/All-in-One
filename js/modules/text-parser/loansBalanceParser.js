@@ -9,6 +9,9 @@
  * - Branch and borrower information
  */
 
+const LOANS_DEBUG = false;
+const loansDbg = (...args) => { if (LOANS_DEBUG) console.debug(...args); };
+
 class LoansBalanceParser {
     constructor() {
         this.reportInfo = {};
@@ -94,7 +97,7 @@ class LoansBalanceParser {
     }
 
     parse(content) {
-        console.log('Using Advanced Loans Balance Parser');
+    loansDbg('Using Advanced Loans Balance Parser');
         
         try {
             const lines = content.split('\n');
@@ -123,7 +126,7 @@ class LoansBalanceParser {
             this.calculateSummaryMetrics(result.data);
             result.summary = this.generateSummary();
 
-            console.log(`Parsed ${result.data.length} loan accounts from file`);
+            loansDbg(`Parsed ${result.data.length} loan accounts from file`);
             return {
                 success: true,
                 data: result.data,
@@ -227,9 +230,9 @@ class LoansBalanceParser {
         // A valid data line should have most of these elements (reduce threshold)
         const validElementCount = [hasCifNumber, hasProductName, hasBorrowerName, hasManyCurrencies, hasDate].filter(Boolean).length;
         
-        console.log('Line validation for:', trimmed.substring(0, 50) + '...');
-        console.log('Has CIF:', hasCifNumber, 'Has Product:', hasProductName, 'Has Borrower:', hasBorrowerName, 'Has Many Currencies:', hasManyCurrencies, 'Has Date:', hasDate);
-        console.log('Valid elements:', validElementCount, 'Currency count:', currencyCount);
+            loansDbg('Line validation for:', trimmed.substring(0, 50) + '...');
+            loansDbg('Has CIF:', hasCifNumber, 'Has Product:', hasProductName, 'Has Borrower:', hasBorrowerName, 'Has Many Currencies:', hasManyCurrencies, 'Has Date:', hasDate);
+            loansDbg('Valid elements:', validElementCount, 'Currency count:', currencyCount);
         
         return validElementCount >= 3; // Keep threshold at 3 for the enhanced format
     }
@@ -239,7 +242,7 @@ class LoansBalanceParser {
         const row = new Array(this.columns.length).fill('');
         
         try {
-            console.log('Parsing line:', line);
+            loansDbg('Parsing line:', line);
             
             // Step 1: Extract account number (first 10+ digits at the beginning)
             const accountMatch = line.match(/^\s*(\d{10,})/);
@@ -260,12 +263,12 @@ class LoansBalanceParser {
                 searchStart = line.indexOf(row[1]) + row[1].length;
             }
             
-            console.log('Search start position:', searchStart);
-            console.log('Remaining text after CIF:', line.substring(searchStart));
+            loansDbg('Search start position:', searchStart);
+            loansDbg('Remaining text after CIF:', line.substring(searchStart));
             
             // Step 4: Extract product name and borrower name using a more general approach
             const remainingText = line.substring(searchStart).trim();
-            console.log('Text after CIF:', remainingText);
+            loansDbg('Text after CIF:', remainingText);
             
             // Strategy: Find where the borrower name starts by looking for clear name indicators
             // The key insight: borrower names usually start with titles or all-caps company names
@@ -279,7 +282,7 @@ class LoansBalanceParser {
             if (titleMatch) {
                 productName = titleMatch[1].trim();
                 borrowerName = titleMatch[2].trim();
-                console.log('Method 1 (Title) - Product:', productName, 'Borrower:', borrowerName);
+                loansDbg('Method 1 (Title) - Product:', productName, 'Borrower:', borrowerName);
             }
             
             // Method 2: Look for all-caps company/organization names
@@ -290,14 +293,14 @@ class LoansBalanceParser {
                 if (companyMatch && companyMatch[2].length > 5) { // Ensure it's a substantial company name
                     productName = companyMatch[1].trim();
                     borrowerName = companyMatch[2].trim();
-                    console.log('Method 2 (Company) - Product:', productName, 'Borrower:', borrowerName);
+                    loansDbg('Method 2 (Company) - Product:', productName, 'Borrower:', borrowerName);
                 } else {
                     // Try alternate pattern - look for company names that start with common business words
                     const businessMatch = remainingText.match(/^(.+?)\s+([A-Z]{2,}(?:\s+[A-Z]+)*(?:\s+(?:KIRANA|ENTERPRISES|COMPANY|CORP|LIMITED|LTD|AND|GENERAL|GENER))*[A-Za-z\s\.\/',&-]*?)(?=\s{3,}|\s+[\d,]+\.\d{2})/);
                     if (businessMatch && businessMatch[2].length > 5) {
                         productName = businessMatch[1].trim();
                         borrowerName = businessMatch[2].trim();
-                        console.log('Method 2b (Business) - Product:', productName, 'Borrower:', borrowerName);
+                        loansDbg('Method 2b (Business) - Product:', productName, 'Borrower:', borrowerName);
                     }
                 }
             }
@@ -308,7 +311,7 @@ class LoansBalanceParser {
                 if (businessKeywordMatch) {
                     productName = businessKeywordMatch[1].trim();
                     borrowerName = businessKeywordMatch[2].trim();
-                    console.log('Method 2.5 (Business Keywords) - Product:', productName, 'Borrower:', borrowerName);
+                    loansDbg('Method 2.5 (Business Keywords) - Product:', productName, 'Borrower:', borrowerName);
                 }
             }
             
@@ -318,13 +321,13 @@ class LoansBalanceParser {
                 if (shreeMatch) {
                     productName = shreeMatch[1].trim();
                     borrowerName = shreeMatch[2].trim();
-                    console.log('Method 3 (Shree) - Product:', productName, 'Borrower:', borrowerName);
+                    loansDbg('Method 3 (Shree) - Product:', productName, 'Borrower:', borrowerName);
                 }
             }
             
             // Method 4: Positional fallback - assume name is the last significant text before amounts
             if (!productName) {
-                console.log('Using positional fallback method...');
+                loansDbg('Using positional fallback method...');
                 
                 // Find the position of the first currency amount
                 const currencyMatch = remainingText.match(/[\d,]+\.\d{2}/);
@@ -359,7 +362,7 @@ class LoansBalanceParser {
                         }
                     }
                     
-                    console.log('Method 4 (Positional) - Product:', productName, 'Borrower:', borrowerName);
+                    loansDbg('Method 4 (Positional) - Product:', productName, 'Borrower:', borrowerName);
                 }
             }
             
@@ -368,15 +371,15 @@ class LoansBalanceParser {
                 row[2] = productName;
                 row[3] = borrowerName;
                 
-                console.log('Final - Product name:', row[2]);
-                console.log('Final - Borrower name:', row[3]);
+                loansDbg('Final - Product name:', row[2]);
+                loansDbg('Final - Borrower name:', row[3]);
             } else {
-                console.log('No valid name/product split found');
+                loansDbg('No valid name/product split found');
             }
             
             // Step 5: Extract all currency amounts in sequence
             const currencyMatches = [...line.matchAll(/([\d,]+\.\d{2})/g)];
-            console.log('Currency matches found:', currencyMatches.map(m => m[1]));
+            loansDbg('Currency matches found:', currencyMatches.map(m => m[1]));
             
             if (currencyMatches.length >= 1) {
                 row[4] = currencyMatches[0][1]; // Sanctioned Amount
@@ -409,7 +412,7 @@ class LoansBalanceParser {
                 // Step 8: Extract numeric fields after the date
                 const afterDate = line.substring(line.indexOf(dateMatch[1]) + dateMatch[1].length);
                 const numberMatches = [...afterDate.matchAll(/\s+(\d{1,3})(?=\s|$)/g)];
-                console.log('Number matches after date:', numberMatches.map(m => m[1]));
+                loansDbg('Number matches after date:', numberMatches.map(m => m[1]));
                 
                 if (numberMatches.length >= 5) {
                     row[11] = numberMatches[0][1]; // Tenure
@@ -420,7 +423,7 @@ class LoansBalanceParser {
                 }
             }
             
-            console.log('Parsed row:', row);
+            loansDbg('Parsed row:', row);
             
         } catch (error) {
             console.warn('Error parsing line, falling back to positional parsing:', error);
@@ -537,5 +540,5 @@ if (typeof textParser !== 'undefined') {
         const parser = new LoansBalanceParser();
         return parser.parse(content);
     });
-    console.log('Loans Balance Parser registered successfully');
+    loansDbg('Loans Balance Parser registered successfully');
 }
