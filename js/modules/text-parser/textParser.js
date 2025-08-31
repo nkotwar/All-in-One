@@ -42,6 +42,9 @@ class TextParser {
         this.filteredData = [];
         this.columnFilters = {}; // Store active filters for each column
         this.loadingOverlay = null;
+    // Pending UI state when elements are not mounted yet
+    this.pendingParserType = null;
+    this.pendingDelimiter = null;
         
         // Parser registry for extensibility
         this.parsers = {
@@ -119,24 +122,27 @@ class TextParser {
         // analyzeData button removed - auto-analysis on data load
 
         // File upload handling
-        uploadZone.addEventListener('click', () => fileInput.click());
-        uploadZone.addEventListener('dragover', this.handleDragOver.bind(this));
-        uploadZone.addEventListener('drop', this.handleFileDrop.bind(this));
-        fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+        if (uploadZone && fileInput) {
+            uploadZone.addEventListener('click', () => fileInput.click());
+            uploadZone.addEventListener('dragover', this.handleDragOver.bind(this));
+            uploadZone.addEventListener('drop', this.handleFileDrop.bind(this));
+            fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+        }
 
         // Parsing controls
-        parseButton.addEventListener('click', this.parseFile.bind(this));
-        parserType.addEventListener('change', this.updateParsingOptions.bind(this));
+        if (parseButton) parseButton.addEventListener('click', this.parseFile.bind(this));
+        if (parserType) parserType.addEventListener('change', this.updateParsingOptions.bind(this));
 
         // Table controls
-        searchTable.addEventListener('keypress', this.handleSearchKeypress.bind(this));
+        if (searchTable) searchTable.addEventListener('keypress', this.handleSearchKeypress.bind(this));
         // fuzzyIntensity event listener removed - using optimal default
-        pageSize.addEventListener('change', this.changePageSize.bind(this));
-        toggleColumns.addEventListener('click', this.toggleColumnControls.bind(this));
+        if (pageSize) pageSize.addEventListener('change', this.changePageSize.bind(this));
+        if (toggleColumns) toggleColumns.addEventListener('click', this.toggleColumnControls.bind(this));
         // analyzeData event listener removed - auto-analysis on data load
 
         // Export controls (simplified)
-        document.getElementById('exportExcel').addEventListener('click', () => this.exportData('excel'));
+        const exportExcelBtn = document.getElementById('exportExcel');
+        if (exportExcelBtn) exportExcelBtn.addEventListener('click', () => this.exportData('excel'));
     }
 
     setupPresets() {
@@ -235,13 +241,20 @@ class TextParser {
     }
 
     updateParsingOptions() {
-        const parserType = document.getElementById('parserType').value;
-        const customPattern = document.getElementById('customPattern').parentElement;
-        const delimiter = document.getElementById('delimiter').parentElement;
+        const parserTypeEl = document.getElementById('parserType');
+        const customPatternInput = document.getElementById('customPattern');
+        const delimiterInput = document.getElementById('delimiter');
+
+        if (!parserTypeEl || !customPatternInput || !delimiterInput) {
+            return; // UI not mounted; nothing to update
+        }
+
+        const customPattern = customPatternInput.parentElement;
+        const delimiter = delimiterInput.parentElement;
 
         // Show/hide relevant options based on parser type
-        customPattern.style.display = parserType === 'regex' ? 'block' : 'none';
-        delimiter.style.display = parserType === 'delimited' ? 'block' : 'none';
+        customPattern.style.display = parserTypeEl.value === 'regex' ? 'block' : 'none';
+        delimiter.style.display = parserTypeEl.value === 'delimited' ? 'block' : 'none';
     }
 
     handleDragOver(e) {
@@ -286,12 +299,14 @@ class TextParser {
         try {
             // Show loading state
             const uploadZone = document.getElementById('uploadZone');
-            uploadZone.innerHTML = `
-                <i class="material-icons">archive</i>
-                <h3>Extracting: ${fileName}</h3>
-                <p>Size: ${fileSize} MB</p>
-                <p><small>Decompressing gzip file...</small></p>
-            `;
+            if (uploadZone) {
+                uploadZone.innerHTML = `
+                    <i class="material-icons">archive</i>
+                    <h3>Extracting: ${fileName}</h3>
+                    <p>Size: ${fileSize} MB</p>
+                    <p><small>Decompressing gzip file...</small></p>
+                `;
+            }
 
             // Extract the gzip file
             const extractedContent = await this.extractGzipFile(file);
@@ -304,17 +319,21 @@ class TextParser {
                     isVirtual: true
                 };
 
-                // Show parsing options
-                document.getElementById('parsingOptions').style.display = 'block';
-                document.getElementById('parseButton').disabled = false;
+                // Show parsing options if present
+                const parsingOptionsEl = document.getElementById('parsingOptions');
+                if (parsingOptionsEl) parsingOptionsEl.style.display = 'block';
+                const parseBtnEl = document.getElementById('parseButton');
+                if (parseBtnEl) parseBtnEl.disabled = false;
 
                 // Update UI
-                uploadZone.innerHTML = `
-                    <i class="material-icons">description</i>
-                    <h3>${extractedContent.name}</h3>
-                    <p>Extracted from: ${fileName}</p>
-                    <p><small>Ready for parsing</small></p>
-                `;
+                if (uploadZone) {
+                    uploadZone.innerHTML = `
+                        <i class="material-icons">description</i>
+                        <h3>${extractedContent.name}</h3>
+                        <p>Extracted from: ${fileName}</p>
+                        <p><small>Ready for parsing</small></p>
+                    `;
+                }
 
                 // Auto-detect based on extracted file name
                 this.autoDetectParser(extractedContent.name);
@@ -326,12 +345,14 @@ class TextParser {
             console.error('Gzip extraction error:', error);
             
             const uploadZone = document.getElementById('uploadZone');
-            uploadZone.innerHTML = `
-                <i class="material-icons">error</i>
-                <h3>Extraction Failed</h3>
-                <p>File: ${fileName}</p>
-                <p style="color: #e74c3c;"><small>${error.message}</small></p>
-            `;
+            if (uploadZone) {
+                uploadZone.innerHTML = `
+                    <i class="material-icons">error</i>
+                    <h3>Extraction Failed</h3>
+                    <p>File: ${fileName}</p>
+                    <p style="color: #e74c3c;"><small>${error.message}</small></p>
+                `;
+            }
         }
     }
 
@@ -388,123 +409,146 @@ class TextParser {
     }
 
     processRegularFile(file, fileName, fileSize) {
-        // Show parsing options
-        document.getElementById('parsingOptions').style.display = 'block';
-        document.getElementById('parseButton').disabled = false;
-        
+        // Show parsing options if present
+        const parsingOptionsEl = document.getElementById('parsingOptions');
+        if (parsingOptionsEl) parsingOptionsEl.style.display = 'block';
+        const parseBtnEl = document.getElementById('parseButton');
+        if (parseBtnEl) parseBtnEl.disabled = false;
+
         // Store file for parsing
         this.currentFile = file;
-        
-        // Update UI
+
+        // Update UI if present
         const uploadZone = document.getElementById('uploadZone');
-        uploadZone.innerHTML = `
-            <i class="material-icons">description</i>
-            <h3>${fileName}</h3>
-            <p>Size: ${fileSize} MB</p>
-            <p><small>File ready for parsing</small></p>
-        `;
-        
+        if (uploadZone) {
+            uploadZone.innerHTML = `
+                <i class="material-icons">description</i>
+                <h3>${fileName}</h3>
+                <p>Size: ${fileSize} MB</p>
+                <p><small>File ready for parsing</small></p>
+            `;
+        }
+
         // Auto-detect file type and suggest parser
         this.autoDetectParser(fileName);
     }
 
     autoDetectParser(fileName) {
         const extension = fileName.toLowerCase().split('.').pop();
-        const parserType = document.getElementById('parserType');
+        const parserTypeEl = document.getElementById('parserType');
         const baseName = fileName.toLowerCase();
-        
+
         // Remove .gz extension for pattern matching if needed
         const cleanName = baseName.replace(/\.gz$/i, '');
-        
+
+        const setType = (type) => {
+            if (parserTypeEl) {
+                parserTypeEl.value = type;
+                this.pendingParserType = null;
+                this.updateParsingOptions();
+            } else {
+                this.pendingParserType = type;
+            }
+        };
+
+        const setDelimiter = (val) => {
+            const delimEl = document.getElementById('delimiter');
+            if (delimEl) {
+                delimEl.value = val;
+                this.pendingDelimiter = null;
+            } else {
+                this.pendingDelimiter = val;
+            }
+        };
+
         // File name based detection (highest priority)
         if (cleanName.startsWith('deposits_balance_file') || baseName.startsWith('deposits_balance_file')) {
-            parserType.value = 'bank-deposits';
+            setType('bank-deposits');
             console.log('Auto-detected: Bank Deposits file (filename pattern match)');
             return;
         }
-        
+
         if (cleanName.startsWith('bgl_accounts_with_non_zero_balance') || baseName.startsWith('bgl_accounts_with_non_zero_balance')) {
-            parserType.value = 'bgl-accounts';
+            setType('bgl-accounts');
             console.log('Auto-detected: BGL Accounts file (filename pattern match)');
             return;
         }
-        
+
         if (cleanName.startsWith('new_cc_od_balance_file') || baseName.startsWith('new_cc_od_balance_file')) {
-            parserType.value = 'new-cc-od-balance';
+            setType('new-cc-od-balance');
             console.log('Auto-detected: New CC/OD Balance file (filename pattern match)');
             return;
         }
-        
+
         if (cleanName.startsWith('cc_od_balance_file') || baseName.startsWith('cc_od_balance_file')) {
-            parserType.value = 'cc-od-balance';
+            setType('cc-od-balance');
             console.log('Auto-detected: CC/OD Balance file (filename pattern match)');
             return;
         }
-        
+
         if (cleanName.startsWith('sdv_accounts_as_on_date') || baseName.startsWith('sdv_accounts_as_on_date')) {
-            parserType.value = 'sdv-accounts';
+            setType('sdv-accounts');
             console.log('Auto-detected: SDV Accounts file (filename pattern match)');
             return;
         }
-        
+
         if (cleanName.startsWith('new_loansbalancefile') || baseName.startsWith('new_loansbalancefile')) {
-            parserType.value = 'new-loans-balance';
+            setType('new-loans-balance');
             console.log('Auto-detected: New Loans Balance file (filename pattern match)');
             return;
         }
-        
+
         if (cleanName.startsWith('loansbalancefile') || baseName.startsWith('loansbalancefile')) {
-            parserType.value = 'loans-balance';
+            setType('loans-balance');
             console.log('Auto-detected: Loans Balance file (filename pattern match)');
             return;
         }
-        
+
         if (cleanName.startsWith('branchwise_cgtmse_claim_lodged_to_portal_via_api_and_accepted') || 
             baseName.startsWith('branchwise_cgtmse_claim_lodged_to_portal_via_api_and_accepted')) {
-            parserType.value = 'cgtmse-claims';
+            setType('cgtmse-claims');
             console.log('Auto-detected: CGTMSE Claims file (filename pattern match)');
             return;
         }
-        
+
         // Extension based detection
         switch(extension) {
             case 'csv':
-                parserType.value = 'delimited';
-                document.getElementById('delimiter').value = ',';
+                setType('delimited');
+                setDelimiter(',');
                 console.log('Auto-detected: CSV file');
                 break;
             case 'tsv':
-                parserType.value = 'delimited';
-                document.getElementById('delimiter').value = '\t';
+                setType('delimited');
+                setDelimiter('\t');
                 console.log('Auto-detected: TSV file');
                 break;
             case 'txt':
             case 'rpt':
                 // Content-based detection for text files
                 if (baseName.includes('deposit')) {
-                    parserType.value = 'bank-deposits';
+                    setType('bank-deposits');
                     console.log('Auto-detected: Bank Deposits file (content hint)');
                 } else if (baseName.includes('bgl') || baseName.includes('account') && baseName.includes('balance')) {
-                    parserType.value = 'bgl-accounts';
+                    setType('bgl-accounts');
                     console.log('Auto-detected: BGL Accounts file (content hint)');
                 } else {
-                    parserType.value = 'fixed-width';
+                    setType('fixed-width');
                     console.log('Auto-detected: Fixed-width text file');
                 }
                 break;
             case 'log':
-                parserType.value = 'regex';
+                setType('regex');
                 console.log('Auto-detected: Log file for regex parsing');
                 break;
             case '': // Files without extension
-                parserType.value = 'fixed-width';
+                setType('fixed-width');
                 console.log('Auto-detected: Fixed-width file (no extension)');
                 break;
             default:
-                parserType.value = 'delimited';
+                setType('delimited');
                 console.log('Auto-detected: Default to delimited parsing');
         }
-        this.updateParsingOptions();
     }
 
     // Parser Factory - uses the parser registry for extensibility
@@ -522,8 +566,10 @@ class TextParser {
         if (!this.currentFile) return;
 
         const parseButton = document.getElementById('parseButton');
-        parseButton.disabled = true;
-        parseButton.innerHTML = '<div class="loading">Parsing...</div>';
+        if (parseButton) {
+            parseButton.disabled = true;
+            parseButton.innerHTML = '<div class="loading">Parsing...</div>';
+        }
 
         // Show loading overlay with immediate effect
         this.showLoading('Parsing file and analyzing data...');
@@ -536,7 +582,20 @@ class TextParser {
             const content = await this.readFile(this.currentFile);
             console.log('File read complete, content length:', content.length);
             
-            const parserType = document.getElementById('parserType').value;
+            // Apply any pending UI settings now that we are parsing
+            const parserTypeEl = document.getElementById('parserType');
+            if (parserTypeEl && this.pendingParserType) {
+                parserTypeEl.value = this.pendingParserType;
+                this.pendingParserType = null;
+                this.updateParsingOptions();
+            }
+            const delimEl = document.getElementById('delimiter');
+            if (delimEl && this.pendingDelimiter !== null) {
+                delimEl.value = this.pendingDelimiter;
+                this.pendingDelimiter = null;
+            }
+
+            const parserType = parserTypeEl ? parserTypeEl.value : (this.pendingParserType || 'delimited');
             console.log('Using parser type:', parserType);
             
             // Use parser factory for better extensibility
@@ -573,8 +632,10 @@ class TextParser {
             
             // Hide loading overlay
             this.hideLoading();
-            parseButton.disabled = false;
-            parseButton.innerHTML = 'Parse File';
+            if (parseButton) {
+                parseButton.disabled = false;
+                parseButton.innerHTML = 'Parse File';
+            }
             console.log('Parsing complete, loading hidden');
         }
     }
@@ -591,7 +652,9 @@ class TextParser {
             const reader = new FileReader();
             reader.onload = (e) => resolve(e.target.result);
             reader.onerror = (e) => reject(new Error('Failed to read file'));
-            reader.readAsText(file, document.getElementById('encoding').value);
+            const encEl = document.getElementById('encoding');
+            const enc = encEl ? encEl.value : 'utf-8';
+            reader.readAsText(file, enc);
         });
     }
 
@@ -2540,7 +2603,8 @@ class TextParser {
     }
 
     showDataContainer() {
-        document.getElementById('dataContainer').style.display = 'block';
+        const dc = document.getElementById('dataContainer');
+        if (dc) dc.style.display = 'block';
     }
 
     showErrorMessage(message) {
@@ -2561,7 +2625,11 @@ class TextParser {
         messageDiv.textContent = message;
         
         const parsingOptions = document.getElementById('parsingOptions');
-        parsingOptions.insertAdjacentElement('afterend', messageDiv);
+        if (parsingOptions) {
+            parsingOptions.insertAdjacentElement('afterend', messageDiv);
+        } else {
+            document.body.appendChild(messageDiv);
+        }
         
         // Auto-remove after 5 seconds
         setTimeout(() => {

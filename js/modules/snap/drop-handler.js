@@ -2,6 +2,11 @@
 function setupFileHandlers() {
     const dropArea = document.getElementById("drop-area");
     const fileInput = document.getElementById("file-input");
+
+    // If required elements are not present (e.g., unified FileHub mode), no-op
+    if (!dropArea || !fileInput) {
+      return;
+    }
   
     // Helper function
     function isPDF(file) {
@@ -80,7 +85,9 @@ function setupFileHandlers() {
     });
   
     // Handle paste event
-    document.addEventListener("paste", function(event) {
+  // If unified FileHub is present, let it handle pastes
+  if (document.getElementById('fileHubDropzone')) return;
+  document.addEventListener("paste", function(event) {
       const clipboardItems = event.clipboardData.items;
       
       for (const item of clipboardItems) {

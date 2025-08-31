@@ -47,7 +47,6 @@
     <!-- Modern Core JavaScript -->
     <script src="js/core/errorHandler.js" defer></script>
     <script src="js/core/toastSystem.js" defer></script>
-    <script src="js/core/modernController.js" defer></script>
     
     <!-- Legacy JavaScript Libraries -->
     <script src="js/libs/interact.min.js" defer></script>
@@ -100,6 +99,9 @@
     <script src="js/modules/text-parser/sdvAccountsParser.js" defer></script>
     <script src="js/modules/text-parser/cgtmseClaimsParser.js" defer></script>
 
+  <!-- File Hub Router (must load after modules) -->
+  <script src="js/modules/file-hub/fileHub.js" defer></script>
+
     <!-- Data Files -->
     <script src="js/data/data.js" defer></script>
     <script src="js/data/raw1.js" defer></script>
@@ -130,11 +132,8 @@
           <li data-tab="cbs-hierarchy">
             <i class="material-icons">account_tree</i> CBS Hierarchy
           </li>
-          <li data-tab="snap-container">
-            <i class="material-icons">blur_on</i> PDF/Image Kernel
-          </li>
-          <li data-tab="text-parser">
-            <i class="material-icons">table_view</i> Text File Parser
+          <li data-tab="file-parser">
+            <i class="material-icons">folder_open</i> File Parser
           </li>
         </ul>
 
@@ -903,225 +902,118 @@
         <div id="cbsResults" class="cbs-search-results"></div>
       </div>
 
-      <!-- snap-container -->
-      <div id="snap-container" class="snap-container content">
-        <h2>PDF/Image Kernel</h2>
-        <div id="drop-area">
-          <p>⬆️ Drag and drop an image here</p>
-          <input
-            type="file"
-            id="file-input"
-            accept="image/*"
-            style="display: none"
-          />
-          <!-- Hide the file input -->
-        </div>
-        <div class="layout">
-          <!-- Left Column: Image Uploader -->
-          <div class="left-column">
-            <div id="crop-container" style="display: none">
-              <img id="image" src="" alt="Image to crop" />
-            </div>
-          </div>
-
-          <!-- Right Column: Image Manipulation Controls -->
-          <div class="right-column">
-            <div id="controls" style="display: none">
-              <label for="file-size"
-                >Desired File Size (KB) [<span id="file-size-range"
-                  >0 KB - 0 KB</span
-                >]:</label
-              >
-              <input
-                type="number"
-                id="file-size"
-                min="1"
-                max="10000"
-                value="25"
-              />
-              <p id="file-size-error" style="color: red; display: none">
-                Please enter a value within the calculated range.
-              </p>
-              <div id="button-container">
-                <button
-                  id="auto-adjust-button"
-                  class="auto-adjust-button"
-                  title="Automatically adjust image settings to match the desired file size"
-                >
-                  <span class="button-icon">🪄</span>
-                  <span class="button-text">Auto Adjust for Desired Size</span>
-                  <span class="loading-spinner" style="display: none">⏳</span>
-                </button>
-                <button id="download-preview-button" style="display: none">
-                  Download (0 KB)
-                </button>
-                <button
-                  id="stop-button"
-                  style="
-                    display: none;
-                    background-color: #dc3545;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    padding: 10px;
-                    font-size: 16px;
-                    cursor: pointer;
-                  "
-                >
-                  ⏹️ Stop
-                </button>
-              </div>
-              <div class="preview-toggle-container" style="margin-top: 10px; text-align: center;">
-                <label for="toggle-preview">
-                  <input type="checkbox" id="toggle-preview" checked>
-                  Show Live Preview
-                </label>
-              </div>
-              <div id="visualization-container">
-                <canvas id="annealing-canvas"></canvas>
-                <img
-                  id="iteration-preview"
-                  src=""
-                  alt="Iteration Preview"
-                  style="display: none; max-height: 150px; max-width: 300px"
-                />
-              </div>
-            </div>
-
-            <div id="sliders-container" style="display: none">
-              <!-- Upscale Resolution -->
-              <div class="slider-row">
-                <div class="slider-label-row">
-                  <label for="upscale-slider">Super Res:</label>
-                  <span id="upscale-value">1x</span>
-                  <button
-                    id="lock-resolution"
-                    class="lock-button"
-                    title="Lock/Unlock Resolution"
-                  >
-                    🔒
-                  </button>
-                </div>
-                <input
-                  type="range"
-                  id="upscale-slider"
-                  min="1"
-                  max="5"
-                  step="0.1"
-                  value="1"
-                />
-              </div>
-
-              <!-- Noise -->
-              <div class="slider-row">
-                <div class="slider-label-row">
-                  <label for="noise-slider">Texture Synthesizer:</label>
-                  <span id="noise-value">0%</span>
-                  <button
-                    id="lock-noise"
-                    class="lock-button"
-                    title="Lock/Unlock Noise"
-                  >
-                    🔒
-                  </button>
-                </div>
-                <input
-                  type="range"
-                  id="noise-slider"
-                  min="0"
-                  max="100"
-                  value="0"
-                />
-              </div>
-
-              <!-- Quality -->
-              <div class="slider-row">
-                <div class="slider-label-row">
-                  <label for="quality-slider">Bitrate Compressor:</label>
-                  <span id="quality-value">100%</span>
-                  <button
-                    id="lock-quality"
-                    class="lock-button"
-                    title="Lock/Unlock Quality"
-                  >
-                    🔒
-                  </button>
-                </div>
-                <input
-                  type="range"
-                  id="quality-slider"
-                  min="0.01"
-                  max="1"
-                  step="0.01"
-                  value="1"
-                />
-              </div>
-
-              <!-- Blur -->
-              <div class="slider-row">
-                <div class="slider-label-row">
-                  <label for="blur-slider">Gaussian Operator:</label>
-                  <span id="blur-value">0px</span>
-                  <button
-                    id="lock-blur"
-                    class="lock-button"
-                    title="Lock/Unlock Blur"
-                  >
-                    🔒
-                  </button>
-                </div>
-                <input
-                  type="range"
-                  id="blur-slider"
-                  min="0"
-                  max="20"
-                  value="0"
-                />
-              </div>
-
-              <!-- Color Depth -->
-              <div class="slider-row">
-                <div class="slider-label-row">
-                  <label for="color-depth-slider">Pixel Spectrum:</label>
-                  <span id="color-depth-value">24-bit</span>
-                  <button
-                    id="lock-color-depth"
-                    class="lock-button"
-                    title="Lock/Unlock Color Depth"
-                  >
-                    🔒
-                  </button>
-                </div>
-                <input
-                  type="range"
-                  id="color-depth-slider"
-                  min="1"
-                  max="24"
-                  value="24"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Text Parser Section -->
-      <div id="text-parser" class="content">
+      <!-- Unified File Parser Section -->
+      <div id="file-parser" class="content">
         <div class="text-parser">
-          <h2>Text File Parser & Data Analyzer</h2>
-          <p>Upload and parse various types of text files to extract structured data with advanced table features.</p>
+          <h2>File Parser</h2>
+          <p>Drop or add files. We’ll auto-route to Image, PDF, or Text tools. The Add Files zone stays here.</p>
 
-          <!-- File Upload Zone -->
-          <div class="upload-zone" id="uploadZone">
+          <!-- Persistent Add Files Zone -->
+          <div class="upload-zone" id="fileHubDropzone">
             <i class="material-icons">cloud_upload</i>
-            <h3>Drop your text file here</h3>
-            <p>or click to browse files</p>
-            <p><small>Supported formats: .txt, .dat, .csv, .log, .rpt</small></p>
-            <input type="file" class="file-input" id="fileInput" accept=".txt,.dat,.csv,.log,.rpt">
+            <h3>Add Files</h3>
+            <p>Drop files or click to browse</p>
+            <p><small>Supported: images, PDFs, .txt, .csv, .log, .rpt, .dat, .tsv, .gz, .zip</small></p>
+            <input type="file" class="file-input" id="fileHubInput" multiple accept=".pdf,image/*,.txt,.csv,.log,.rpt,.dat,.tsv,.gz,.zip">
           </div>
 
-          <!-- Parsing Options -->
-          <div class="parsing-options" id="parsingOptions">
+          <!-- Module Host: shows one workspace at a time -->
+          <div id="fileHubModules">
+            <!-- Snap (Image/PDF) Module View -->
+            <div id="snapModule" data-module="snap" style="display:none;">
+              <div class="layout">
+                <!-- Left Column: Image Uploader -->
+                <div class="left-column">
+                  <div id="crop-container" style="display: none">
+                    <img id="image" src="" alt="Image to crop" />
+                  </div>
+                </div>
+                <!-- Right Column: Image Manipulation Controls -->
+                <div class="right-column">
+                  <div id="controls" style="display: none">
+                    <label for="file-size">Desired File Size (KB) [<span id="file-size-range">0 KB - 0 KB</span>]:</label>
+                    <input type="number" id="file-size" min="1" max="10000" value="25" />
+                    <p id="file-size-error" style="color: red; display: none">Please enter a value within the calculated range.</p>
+                    <div id="button-container">
+                      <button id="auto-adjust-button" class="auto-adjust-button" title="Automatically adjust image settings to match the desired file size">
+                        <span class="button-icon">🪄</span>
+                        <span class="button-text">Auto Adjust for Desired Size</span>
+                        <span class="loading-spinner" style="display: none">⏳</span>
+                      </button>
+                      <button id="download-preview-button" style="display: none">Download (0 KB)</button>
+                      <button id="stop-button" style="display: none; background-color: #dc3545; color: white; border: none; border-radius: 5px; padding: 10px; font-size: 16px; cursor: pointer;">⏹️ Stop</button>
+                    </div>
+                    <div class="preview-toggle-container" style="margin-top: 10px; text-align: center;">
+                      <label for="toggle-preview">
+                        <input type="checkbox" id="toggle-preview" checked />
+                        Show Live Preview
+                      </label>
+                    </div>
+                    <div id="visualization-container">
+                      <canvas id="annealing-canvas"></canvas>
+                      <img id="iteration-preview" src="" alt="Iteration Preview" style="display: none; max-height: 150px; max-width: 300px" />
+                    </div>
+                  </div>
+
+                  <div id="sliders-container" style="display: none">
+                    <!-- Upscale Resolution -->
+                    <div class="slider-row">
+                      <div class="slider-label-row">
+                        <label for="upscale-slider">Super Res:</label>
+                        <span id="upscale-value">1x</span>
+                        <button id="lock-resolution" class="lock-button" title="Lock/Unlock Resolution">🔒</button>
+                      </div>
+                      <input type="range" id="upscale-slider" min="1" max="5" step="0.1" value="1" />
+                    </div>
+
+                    <!-- Noise -->
+                    <div class="slider-row">
+                      <div class="slider-label-row">
+                        <label for="noise-slider">Texture Synthesizer:</label>
+                        <span id="noise-value">0%</span>
+                        <button id="lock-noise" class="lock-button" title="Lock/Unlock Noise">🔒</button>
+                      </div>
+                      <input type="range" id="noise-slider" min="0" max="100" value="0" />
+                    </div>
+
+                    <!-- Quality -->
+                    <div class="slider-row">
+                      <div class="slider-label-row">
+                        <label for="quality-slider">Bitrate Compressor:</label>
+                        <span id="quality-value">100%</span>
+                        <button id="lock-quality" class="lock-button" title="Lock/Unlock Quality">🔒</button>
+                      </div>
+                      <input type="range" id="quality-slider" min="0.01" max="1" step="0.01" value="1" />
+                    </div>
+
+                    <!-- Blur -->
+                    <div class="slider-row">
+                      <div class="slider-label-row">
+                        <label for="blur-slider">Gaussian Operator:</label>
+                        <span id="blur-value">0px</span>
+                        <button id="lock-blur" class="lock-button" title="Lock/Unlock Blur">🔒</button>
+                      </div>
+                      <input type="range" id="blur-slider" min="0" max="20" value="0" />
+                    </div>
+
+                    <!-- Color Depth -->
+                    <div class="slider-row">
+                      <div class="slider-label-row">
+                        <label for="color-depth-slider">Pixel Spectrum:</label>
+                        <span id="color-depth-value">24-bit</span>
+                        <button id="lock-color-depth" class="lock-button" title="Lock/Unlock Color Depth">🔒</button>
+                      </div>
+                      <input type="range" id="color-depth-slider" min="1" max="24" value="24" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Text Parser Module View -->
+            <div id="textParserModule" data-module="text" style="display:none;">
+              <!-- Parsing Options -->
+              <div class="parsing-options" id="parsingOptions">
             <h3>Parsing Configuration</h3>
             
             <!-- Preset Buttons -->
@@ -1189,11 +1081,11 @@
               </div>
             </div>
 
-            <button class="parse-button" id="parseButton" disabled>Parse File</button>
-          </div>
+                <button class="parse-button" id="parseButton" disabled>Parse File</button>
+              </div>
 
-          <!-- Data Container -->
-          <div class="data-container" id="dataContainer">
+              <!-- Data Container -->
+              <div class="data-container" id="dataContainer">
             <!-- Table Controls -->
             <div class="table-controls">
               <div class="control-group">
@@ -1240,17 +1132,19 @@
               <!-- Pagination controls will be generated dynamically -->
             </div>
 
-            <!-- Export Controls -->
-            <div class="export-controls">
-              <button class="export-btn" id="exportExcel">Export Excel</button>
-              <!-- Simplified: only Excel export available -->
-            </div>
+                <!-- Export Controls -->
+                <div class="export-controls">
+                  <button class="export-btn" id="exportExcel">Export Excel</button>
+                  <!-- Simplified: only Excel export available -->
+                </div>
 
-            <!-- Statistics Panel -->
-            <div class="stats-panel" id="statsPanel" style="display: none;">
-              <h4>Data Analysis</h4>
-              <div class="stats-grid" id="statsGrid">
-                <!-- Statistics will be generated dynamically -->
+                <!-- Statistics Panel -->
+                <div class="stats-panel" id="statsPanel" style="display: none;">
+                  <h4>Data Analysis</h4>
+                  <div class="stats-grid" id="statsGrid">
+                    <!-- Statistics will be generated dynamically -->
+                  </div>
+                </div>
               </div>
             </div>
           </div>
