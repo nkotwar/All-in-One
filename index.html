@@ -1091,6 +1091,16 @@
               <div class="control-group">
                 <label for="searchTable">Search:</label>
                 <input type="text" id="searchTable" placeholder="Search data...">
+                <div id="searchMode" style="display:inline-flex; gap:8px; align-items:center; margin-left:8px;">
+                  <label style="display:inline-flex; gap:4px; align-items:center;">
+                    <input type="radio" name="searchMode" value="partial" checked>
+                    <span>Partial</span>
+                  </label>
+                  <label style="display:inline-flex; gap:4px; align-items:center;">
+                    <input type="radio" name="searchMode" value="exact">
+                    <span>Exact</span>
+                  </label>
+                </div>
               </div>
               <div class="control-group">
                 <label for="pageSize">Rows per page:</label>
