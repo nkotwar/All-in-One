@@ -47,6 +47,9 @@ class TextParser {
     this.pendingParserType = null;
     this.pendingDelimiter = null;
         
+        // Word Template Generator integration
+        this.wordTemplateGenerator = null;
+        
         // Parser registry for extensibility
         this.parsers = {
             'bank-deposits': (content) => this.parseBankDeposits(content),
@@ -65,12 +68,41 @@ class TextParser {
         
         this.initializeEventListeners();
         this.setupPresets();
+        
+        // Initialize Word Template Generator
+        this.initializeWordTemplateGenerator();
     }
 
     // Method to register new parsers dynamically
     registerParser(name, parserFunction) {
         this.parsers[name] = parserFunction;
     // Optional: log registry in debug builds only
+    }
+
+    initializeWordTemplateGenerator() {
+        // Initialize when WordTemplateGenerator is available
+        if (typeof WordTemplateGenerator !== 'undefined') {
+            this.wordTemplateGenerator = new WordTemplateGenerator(this);
+        } else {
+            // Retry after a short delay if not loaded yet
+            setTimeout(() => {
+                if (typeof WordTemplateGenerator !== 'undefined') {
+                    this.wordTemplateGenerator = new WordTemplateGenerator(this);
+                }
+            }, 1000);
+        }
+    }
+
+    // Trigger event when data parsing is complete
+    triggerDataParsingComplete() {
+        const event = new CustomEvent('dataParsingComplete', {
+            detail: {
+                headers: this.headers,
+                data: this.data,
+                filteredData: this.filteredData
+            }
+        });
+        document.dispatchEvent(event);
     }
 
     showLoading(message = 'Processing...') {
@@ -362,6 +394,9 @@ class TextParser {
             this.showDataContainer();
             this.performDataAnalysis();
             this.showSuccessMessage(`Loaded ${this.data.length} rows from ${fileName}`);
+            
+            // Trigger event for Word Template Generator
+            this.triggerDataParsingComplete();
         } catch (err) {
             console.error('Excel parse error:', err);
             this.showErrorMessage(err.message || 'Failed to parse Excel file');
@@ -521,6 +556,9 @@ class TextParser {
                         if (pageSizeSelect) pageSizeSelect.value = 'all';
                         this.renderTable(); this.showDataContainer(); this.performDataAnalysis();
                         this.showSuccessMessage(`Loaded ${this.data.length} rows from ${fileName}`);
+                        
+                        // Trigger event for Word Template Generator
+                        this.triggerDataParsingComplete();
                         return;
                     }
                 }
@@ -546,6 +584,9 @@ class TextParser {
                 if (pageSizeSelect) pageSizeSelect.value = 'all';
                 this.renderTable(); this.showDataContainer(); this.performDataAnalysis();
                 this.showSuccessMessage(`Loaded ${data.length} rows from ${fileName}`);
+                
+                // Trigger event for Word Template Generator
+                this.triggerDataParsingComplete();
                 return;
             }
 
@@ -567,6 +608,9 @@ class TextParser {
                 if (pageSizeSelect) pageSizeSelect.value = 'all';
                 this.renderTable(); this.showDataContainer(); this.performDataAnalysis();
                 this.showSuccessMessage(`Loaded ${data.length} rows from ${fileName}`);
+                
+                // Trigger event for Word Template Generator
+                this.triggerDataParsingComplete();
                 return;
             }
 
@@ -1023,10 +1067,11 @@ class TextParser {
             
             // Auto-analyze data when loaded
             this.performDataAnalysis();
-            // Mount Canvas UI (mail merge) when data is available
-            this.ensureCanvasUI();
             
             this.showSuccessMessage(`Successfully parsed ${this.data.length} rows with ${this.headers.length} columns.`);
+
+            // Trigger event for Word Template Generator
+            this.triggerDataParsingComplete();
 
         } catch (error) {
             console.error('Parsing error:', error);
@@ -3231,560 +3276,6 @@ class TextParser {
         }, 5000);
     }
 
-    // ===== Canvas (Mail Merge) =====
-    ensureCanvasUI() {
-        try {
-            if (!Array.isArray(this.headers) || !this.headers.length) return;
-            if (!Array.isArray(this.filteredData) || !this.filteredData.length) return;
-
-            if (!document.getElementById('canvasStyles')) {
-                const style = document.createElement('style');
-                style.id = 'canvasStyles';
-                style.textContent = `
-                .mc-fab { position: fixed; right: 20px; bottom: 24px; z-index: 1000; width: 56px; height: 56px; border-radius: 50%; background: #3f51b5; color: #fff; border: none; box-shadow: 0 4px 12px rgba(0,0,0,.2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; }
-                .mc-fab:hover { background: #334296; }
-                .mc-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 1000; display: none; }
-                .mc-modal { position: fixed; inset: 5% 10%; background: #fff; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.25); z-index: 1001; display: none; overflow: hidden; }
-                .mc-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #e5e7eb; }
-                .mc-title { font-weight: 600; }
-                .mc-body { display: grid; grid-template-columns: 240px 1fr; gap: 12px; height: calc(100% - 108px); padding: 12px; }
-                .mc-side { border-right: 1px solid #eee; overflow: auto; }
-                .mc-editor-wrap { height: 100%; display: flex; flex-direction: column; }
-                .mc-toolbar { padding: 6px; border: 1px solid #e5e7eb; border-bottom: none; border-radius: 6px 6px 0 0; background:#fafafa; }
-                .mc-toolbar button { margin-right: 6px; }
-                .mc-editor { flex: 1; border: 1px solid #e5e7eb; border-radius: 0 0 6px 6px; padding: 12px; overflow: auto; }
-                .mc-footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-top: 1px solid #e5e7eb; }
-                .mc-chip { display: inline-block; padding: 4px 8px; margin: 4px; border: 1px solid #ddd; border-radius: 12px; font-size: 12px; cursor: pointer; background: #fff; }
-                .mc-chip:hover { background: #f3f4f6; }
-                .mc-controls { padding: 8px 10px; }
-                .mc-checkbox { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; }
-                .mc-btn { padding: 8px 12px; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; cursor: pointer; }
-                .mc-btn.primary { background: #3f51b5; color: #fff; border-color: #3f51b5; }
-                .mc-btn.primary:hover { background: #334296; }
-                .mc-btn:disabled { opacity: .6; cursor: not-allowed; }
-                .mm-page { page-break-after: always; padding: 20mm; font-family: Arial, sans-serif; font-size: 12pt; }
-                @media print { .mm-page { page-break-after: always; } }
-                `;
-                document.head.appendChild(style);
-            }
-
-            let fab = document.getElementById('canvasFab');
-            if (!fab) {
-                fab = document.createElement('button');
-                fab.id = 'canvasFab';
-                fab.className = 'mc-fab';
-                fab.title = 'Canvas (Mail Merge)';
-                fab.innerHTML = '<span class="material-icons">inbox</span>';
-                fab.addEventListener('click', () => this.openCanvas());
-                document.body.appendChild(fab);
-            }
-            fab.style.display = 'flex';
-
-            let backdrop = document.getElementById('canvasBackdrop');
-            if (!backdrop) {
-                backdrop = document.createElement('div');
-                backdrop.id = 'canvasBackdrop';
-                backdrop.className = 'mc-modal-backdrop';
-                backdrop.addEventListener('click', () => this.closeCanvas());
-                document.body.appendChild(backdrop);
-            }
-
-            let modal = document.getElementById('canvasModal');
-            if (!modal) {
-                modal = document.createElement('div');
-                modal.id = 'canvasModal';
-                modal.className = 'mc-modal';
-                modal.innerHTML = `
-                    <div class="mc-header">
-                        <div class="mc-title">Canvas — Mail Merge</div>
-                        <div>
-                            <button class="mc-btn" id="mcCloseBtn">Close</button>
-                        </div>
-                    </div>
-                    <div class="mc-body">
-                        <div class="mc-side">
-                            <div class="mc-controls">
-                                <div style="font-weight:600;margin-bottom:6px;">Placeholders</div>
-                                <div id="mcFields"></div>
-                                <hr style="margin:10px 0;"/>
-                                <label class="mc-checkbox">
-                                    <input type="checkbox" id="mcUseFiltered" checked />
-                                    Use filtered rows only
-                                </label>
-                                <div style="margin-top:8px;font-size:12px;color:#6b7280;">
-                                    Rows available: <span id="mcRowCount">0</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mc-editor-wrap">
-                            <div class="mc-toolbar">
-                                <button class="mc-btn" data-cmd="bold"><b>B</b></button>
-                                <button class="mc-btn" data-cmd="italic"><i>I</i></button>
-                                <button class="mc-btn" data-cmd="underline"><u>U</u></button>
-                                <button class="mc-btn" data-cmd="insertUnorderedList">• List</button>
-                                <button class="mc-btn" id="mcInsertFieldBtn">Insert Field</button>
-                            </div>
-                            <div id="mcEditor" class="mc-editor" contenteditable="true"></div>
-                        </div>
-                    </div>
-                    <div class="mc-footer">
-                        <div style="font-size:12px;color:#6b7280;">Tip: Type <<Field Name>> or click a field to insert. Values come from the current table.</div>
-                        <div>
-                            <button class="mc-btn" id="mcPreviewBtn">Preview 1</button>
-                            <button class="mc-btn" id="mcTestBtn">Test PDF</button>
-                            <button class="mc-btn primary" id="mcGenerateBtn">Generate PDF</button>
-                        </div>
-                    </div>
-                `;
-                document.body.appendChild(modal);
-
-                modal.querySelectorAll('.mc-toolbar [data-cmd]').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const cmd = e.currentTarget.getAttribute('data-cmd');
-                        document.execCommand(cmd, false, null);
-                        document.getElementById('mcEditor').focus();
-                    });
-                });
-                modal.querySelector('#mcCloseBtn').addEventListener('click', () => this.closeCanvas());
-                modal.querySelector('#mcInsertFieldBtn').addEventListener('click', () => this.openFieldsMenu());
-                modal.querySelector('#mcPreviewBtn').addEventListener('click', () => this.previewMailMerge());
-                modal.querySelector('#mcTestBtn').addEventListener('click', () => this.testPdfEngine());
-                modal.querySelector('#mcGenerateBtn').addEventListener('click', () => this.performMailMergeToPdf());
-
-                // Track selection inside editor and support rich paste from Word
-                const editorEl = modal.querySelector('#mcEditor');
-                const saveSel = () => {
-                    const sel = window.getSelection();
-                    if (sel && sel.rangeCount > 0 && editorEl.contains(sel.anchorNode)) {
-                        this._mcSelectionRange = sel.getRangeAt(0).cloneRange();
-                    }
-                };
-                editorEl.addEventListener('keyup', saveSel);
-                editorEl.addEventListener('mouseup', saveSel);
-                document.addEventListener('selectionchange', () => {
-                    const sel = window.getSelection();
-                    if (sel && sel.rangeCount > 0 && editorEl.contains(sel.anchorNode)) {
-                        this._mcSelectionRange = sel.getRangeAt(0).cloneRange();
-                    }
-                });
-                editorEl.addEventListener('paste', (e) => {
-                    try {
-                        e.preventDefault();
-                        const html = e.clipboardData.getData('text/html');
-                        const text = e.clipboardData.getData('text/plain');
-                        const content = html ? this.cleanPastedHtml(html) : this.escapeHtml(text).replace(/\n/g, '<br/>');
-                        this.insertHtmlAtCursor(content);
-                    } catch {}
-                });
-            }
-
-            const cntEl = document.getElementById('mcRowCount');
-            if (cntEl) cntEl.textContent = String(this.filteredData.length);
-            const useFilteredEl = document.getElementById('mcUseFiltered');
-            if (useFilteredEl) {
-                useFilteredEl.addEventListener('change', () => {
-                    const rows = useFilteredEl.checked ? this.filteredData : this.data;
-                    const el = document.getElementById('mcRowCount');
-                    if (el) el.textContent = String(rows.length);
-                });
-            }
-        } catch (e) {
-            console.warn('Canvas UI init failed:', e);
-        }
-    }
-
-    openCanvas() {
-        try {
-            const backdrop = document.getElementById('canvasBackdrop');
-            const modal = document.getElementById('canvasModal');
-            if (!backdrop || !modal) return;
-            const editor = document.getElementById('mcEditor');
-            const saved = localStorage.getItem('canvasTemplate');
-            if (editor) editor.innerHTML = saved || '<p><b>Notice</b></p><p>Dear <<Customer Name>>,</p><p>Your account <<Account Number>> shows an outstanding balance of <<Outstanding Balance>>.</p><p>Regards,<br/>Branch</p>';
-            this.populateFieldChips();
-            backdrop.style.display = 'block';
-            modal.style.display = 'block';
-            setTimeout(() => document.getElementById('mcEditor')?.focus(), 0);
-            const cntEl = document.getElementById('mcRowCount');
-            if (cntEl) cntEl.textContent = String(this.filteredData.length);
-        } catch (e) {
-            console.warn('Open Canvas failed:', e);
-        }
-    }
-
-    closeCanvas() {
-        const backdrop = document.getElementById('canvasBackdrop');
-        const modal = document.getElementById('canvasModal');
-        if (backdrop) backdrop.style.display = 'none';
-        if (modal) modal.style.display = 'none';
-        const tpl = document.getElementById('mcEditor')?.innerHTML || '';
-        try { localStorage.setItem('canvasTemplate', tpl); } catch {}
-    }
-
-    populateFieldChips() {
-        const container = document.getElementById('mcFields');
-        if (!container) return;
-        container.innerHTML = '';
-        const frag = document.createDocumentFragment();
-        this.headers.forEach(h => {
-            const chip = document.createElement('span');
-            chip.className = 'mc-chip';
-            chip.textContent = h;
-            chip.title = 'Click to insert';
-            chip.addEventListener('click', () => this.insertPlaceholderAtCursor(`<<${h}>>`));
-            frag.appendChild(chip);
-        });
-        container.appendChild(frag);
-    }
-
-    openFieldsMenu() {
-        document.getElementById('mcEditor')?.focus();
-    }
-
-    insertPlaceholderAtCursor(text) {
-        const editor = document.getElementById('mcEditor');
-        if (!editor) return;
-        editor.focus();
-        const sel = window.getSelection();
-        let range = this._mcSelectionRange && editor.contains(this._mcSelectionRange.commonAncestorContainer)
-            ? this._mcSelectionRange.cloneRange()
-            : (sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null);
-        if (!range) {
-            document.execCommand('insertText', false, text);
-            return;
-        }
-        range.deleteContents();
-        range.insertNode(document.createTextNode(text));
-        range.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(range);
-        this._mcSelectionRange = range.cloneRange();
-    }
-
-    insertHtmlAtCursor(html) {
-        const editor = document.getElementById('mcEditor');
-        if (!editor) return;
-        editor.focus();
-        const sel = window.getSelection();
-        let range = this._mcSelectionRange && editor.contains(this._mcSelectionRange.commonAncestorContainer)
-            ? this._mcSelectionRange.cloneRange()
-            : (sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null);
-        if (!range) return;
-        range.deleteContents();
-        const temp = document.createElement('div');
-        temp.innerHTML = html;
-        const frag = document.createDocumentFragment();
-        while (temp.firstChild) frag.appendChild(temp.firstChild);
-        range.insertNode(frag);
-        range.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(range);
-        this._mcSelectionRange = range.cloneRange();
-    }
-
-    previewMailMerge() {
-        const tplHtml = document.getElementById('mcEditor')?.innerHTML || '';
-        const rows = (document.getElementById('mcUseFiltered')?.checked ?? true) ? this.filteredData : this.data;
-        if (!tplHtml || !rows.length) {
-            this.showErrorMessage('Nothing to preview.');
-            return;
-        }
-        const merge = this.buildMergedHtmlForRow(tplHtml, rows[0]);
-        const w = window.open('', '_blank');
-        if (w) {
-            w.document.write(`<html><head><title>Preview</title></head><body class="mm-page">${merge}</body></html>`);
-            w.document.close();
-        }
-    }
-
-    testPdfEngine() {
-        try {
-            // Create a simple test element
-            const testDiv = document.createElement('div');
-            testDiv.innerHTML = '<h1>PDF Engine Test</h1><p>This is a simple test to verify html2pdf is working.</p>';
-            testDiv.style.cssText = `
-                position: absolute;
-                top: 100px;
-                left: 100px;
-                width: 400px;
-                height: 200px;
-                background: white;
-                padding: 20px;
-                border: 1px solid #ccc;
-                font-family: Arial, sans-serif;
-                z-index: 10001;
-            `;
-            document.body.appendChild(testDiv);
-
-            // Check for html2pdf
-            const html2pdfFn = window.html2pdf || window.html2pdf?.default;
-            if (!html2pdfFn) {
-                this.showErrorMessage('html2pdf not found in window object');
-                document.body.removeChild(testDiv);
-                return;
-            }
-
-            // Simple test
-            html2pdfFn()
-                .from(testDiv)
-                .set({
-                    margin: 10,
-                    filename: 'test.pdf',
-                    image: { type: 'jpeg', quality: 0.9 },
-                    html2canvas: { scale: 1 },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                })
-                .save()
-                .then(() => {
-                    this.showSuccessMessage('PDF engine test successful!');
-                    document.body.removeChild(testDiv);
-                })
-                .catch((err) => {
-                    this.showErrorMessage('PDF engine test failed: ' + err.message);
-                    document.body.removeChild(testDiv);
-                    console.error('Test error:', err);
-                });
-
-        } catch (e) {
-            this.showErrorMessage('PDF test error: ' + e.message);
-            console.error('Test exception:', e);
-        }
-    }
-
-    performMailMergeToPdf() {
-        try {
-            // More robust html2pdf detection
-            let html2pdfFn = null;
-            if (typeof window.html2pdf === 'function') {
-                html2pdfFn = window.html2pdf;
-            } else if (window.html2pdf && typeof window.html2pdf.default === 'function') {
-                html2pdfFn = window.html2pdf.default;
-            } else if (window.html2pdf && typeof window.html2pdf.html2pdf === 'function') {
-                html2pdfFn = window.html2pdf.html2pdf;
-            } else if (typeof html2pdf === 'function') {
-                html2pdfFn = html2pdf;
-            }
-            
-            if (!html2pdfFn) {
-                this.showErrorMessage('PDF engine not available. Please ensure html2pdf.bundle.min.js is loaded.');
-                return;
-            }
-            const useFiltered = (document.getElementById('mcUseFiltered')?.checked ?? true);
-            const rows = useFiltered ? this.filteredData : this.data;
-            if (!rows || rows.length === 0) {
-                this.showErrorMessage('No rows to merge.');
-                return;
-            }
-            const tplHtml = document.getElementById('mcEditor')?.innerHTML || '';
-            if (!tplHtml) {
-                this.showErrorMessage('Template is empty.');
-                return;
-            }
-            let container = document.getElementById('mcRender');
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'mcRender';
-                container.style.position = 'fixed';
-                container.style.left = '-9999px';
-                container.style.top = '0';
-                document.body.appendChild(container);
-            }
-            container.innerHTML = '';
-            const wrapper = document.createElement('div');
-            wrapper.id = 'mcDocument';
-            const headerIndexMap = new Map(this.headers.map((h, i) => [h, i]));
-            rows.forEach(row => {
-                const merged = this.buildMergedHtmlForRow(tplHtml, row, headerIndexMap);
-                const page = document.createElement('div');
-                page.className = 'mm-page';
-                page.innerHTML = merged;
-                wrapper.appendChild(page);
-            });
-            container.appendChild(wrapper);
-            
-            // Temporarily make container visible for html2pdf
-            container.style.position = 'absolute';
-            container.style.left = '0';
-            container.style.top = '0';
-            container.style.width = '210mm';
-            container.style.height = 'auto';
-            container.style.visibility = 'hidden';
-            container.style.overflow = 'hidden';
-            container.style.zIndex = '-1000';
-            
-            const opt = {
-                margin:       [10, 10, 10, 10],
-                filename:     'MailMerge.pdf',
-                image:        { type: 'jpeg', quality: 0.95 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak:    { mode: ['css'] }
-            };
-            
-            // Use the wrapper directly since it's now properly in DOM
-            html2pdfFn().from(wrapper).set(opt).save().then(() => {
-                this.showSuccessMessage(`Generated PDF for ${rows.length} row(s).`);
-                // Reset container position
-                container.style.position = 'fixed';
-                container.style.left = '-9999px';
-                container.style.top = '0';
-                container.style.visibility = 'visible';
-                container.style.zIndex = 'auto';
-            }).catch(err => {
-                console.error('Mail merge PDF error:', err);
-                // Try fallback approach with innerHTML
-                this.tryFallbackPdfGeneration(wrapper, opt, rows.length);
-                // Reset container position
-                container.style.position = 'fixed';
-                container.style.left = '-9999px';
-                container.style.top = '0';
-                container.style.visibility = 'visible';
-                container.style.zIndex = 'auto';
-            });
-        } catch (e) {
-            console.error('Mail merge failed:', e);
-            this.showErrorMessage('Mail merge failed. See console.');
-        }
-    }
-
-    buildMergedHtmlForRow(templateHtml, row, headerIndexMap = null) {
-        const map = headerIndexMap || new Map(this.headers.map((h, i) => [h, i]));
-        const norm = s => String(s).trim().toLowerCase().replace(/\s+/g, ' ').replace(/[^a-z0-9]/g, '');
-        const normMap = new Map();
-        this.headers.forEach((h, i) => normMap.set(norm(h), i));
-        let html = templateHtml;
-        const tokenRe = /<<\s*([^<>]+?)\s*>>|{{\s*([^{}]+?)\s*}}/g;
-        html = html.replace(tokenRe, (m, p1, p2) => {
-            const raw = (p1 || p2 || '').trim();
-            if (map.has(raw)) {
-                const idx = map.get(raw); const val = row[idx];
-                return this.escapeHtml(val == null ? '' : String(val));
-            }
-            const key = norm(raw);
-            if (normMap.has(key)) {
-                const idx = normMap.get(key); const val = row[idx];
-                return this.escapeHtml(val == null ? '' : String(val));
-            }
-            return m;
-        });
-        return html;
-    }
-
-    escapeHtml(str) {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/\"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    cleanPastedHtml(html) {
-        // Strip Microsoft Word markup while keeping basic structure
-        let out = html
-            .replace(/<!--\s*StartFragment\s*-->/gi, '')
-            .replace(/<!--\s*EndFragment\s*-->/gi, '')
-            .replace(/<\/?meta[^>]*>/gi, '')
-            .replace(/<\/?link[^>]*>/gi, '')
-            .replace(/<\/?style[^>]*>[\s\S]*?<\/?style>/gi, '')
-            .replace(/\s*mso-[^:;]+:[^;"']+;?/gi, '')
-            .replace(/class="[^"]*Mso[^"]*"/gi, '')
-            .replace(/<!--.*?-->/gs, '');
-        const allowed = ['p','br','b','strong','i','em','u','ul','ol','li','div','span','h1','h2','h3','h4','h5','h6','table','thead','tbody','tr','td','th','hr'];
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = out;
-        const traverse = (node) => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-                const tag = node.tagName.toLowerCase();
-                if (!allowed.includes(tag)) {
-                    const parent = node.parentNode;
-                    while (node.firstChild) parent.insertBefore(node.firstChild, node);
-                    parent.removeChild(node);
-                    return;
-                }
-                node.removeAttribute('style');
-            }
-            let child = node.firstChild;
-            while (child) {
-                const next = child.nextSibling;
-                traverse(child);
-                child = next;
-            }
-        };
-        traverse(wrapper);
-        return wrapper.innerHTML;
-    }
-
-    tryFallbackPdfGeneration(wrapper, opt, rowCount) {
-        try {
-            // Alternative approach: Create a simple string-based PDF generation
-            const template = document.getElementById('mcEditor')?.innerHTML.trim() || '';
-            const currentData = this.getFilteredData();
-            
-            // Create a new, fresh element
-            const pdfElement = document.createElement('div');
-            pdfElement.id = 'fallback-pdf-element';
-            pdfElement.style.cssText = `
-                position: absolute;
-                top: 50px;
-                left: 50px;
-                width: 200mm;
-                background: white;
-                padding: 20px;
-                font-family: Arial, sans-serif;
-                font-size: 12pt;
-                line-height: 1.4;
-                color: black;
-                z-index: 9999;
-                border: 1px solid #ccc;
-            `;
-            
-            // Build content from scratch
-            let fullContent = '';
-            currentData.forEach((row, index) => {
-                const mergedHtml = this.buildMergedHtmlForRow(template, row);
-                fullContent += `<div class="notice-page">${mergedHtml}</div>`;
-                if (index < currentData.length - 1) {
-                    fullContent += '<div style="page-break-after: always; height: 20px;"></div>';
-                }
-            });
-            
-            pdfElement.innerHTML = fullContent;
-            document.body.appendChild(pdfElement);
-            
-            // Try direct html2pdf call
-            setTimeout(() => {
-                const html2pdfFn = window.html2pdf || window.html2pdf?.default;
-                if (html2pdfFn) {
-                    html2pdfFn()
-                        .from(pdfElement)
-                        .set({
-                            margin: [10, 10, 10, 10],
-                            filename: 'MailMerge-Fallback.pdf',
-                            image: { type: 'jpeg', quality: 0.9 },
-                            html2canvas: { scale: 1.5 },
-                            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                        })
-                        .save()
-                        .then(() => {
-                            this.showSuccessMessage(`Generated PDF using fallback method for ${rowCount} row(s).`);
-                            document.body.removeChild(pdfElement);
-                        })
-                        .catch(() => {
-                            this.showErrorMessage('Fallback PDF generation also failed. Try using fewer rows or simpler formatting.');
-                            document.body.removeChild(pdfElement);
-                        });
-                } else {
-                    this.showErrorMessage('PDF library not accessible. Please check browser console for errors.');
-                    document.body.removeChild(pdfElement);
-                }
-            }, 500);
-            
-        } catch (e) {
-            console.error('Fallback generation error:', e);
-            this.showErrorMessage('All PDF generation methods failed. Error: ' + e.message);
-        }
-    }
 }
 
 // Initialize the text parser when the DOM is loaded

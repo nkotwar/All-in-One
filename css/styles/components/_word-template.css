@@ -1,0 +1,373 @@
+/* Word Template Generator Styles */
+
+/* Floating Mail Button */
+.floating-mail-button {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 1000;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    border-radius: 50px;
+    padding: 15px 20px;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    transform: translateY(100px);
+    opacity: 0;
+    user-select: none;
+}
+
+.floating-mail-button.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.floating-mail-button:hover {
+    background: linear-gradient(135deg, #0056b3, #004085);
+    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+    transform: translateY(-2px);
+}
+
+.floating-button-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.floating-button-content .material-icons {
+    font-size: 20px;
+}
+
+.floating-button-text {
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Template Modal */
+.template-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(4px);
+}
+
+.template-modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.template-modal-content {
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    transform: scale(0.9) translateY(20px);
+    transition: all 0.3s ease;
+}
+
+.template-modal-overlay.show .template-modal-content {
+    transform: scale(1) translateY(0);
+}
+
+/* Modal Header */
+.template-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 25px;
+    border-bottom: 1px solid #e9ecef;
+    background: #f8f9fa;
+}
+
+.template-modal-header h3 {
+    margin: 0;
+    color: #333;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.template-modal-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+    color: #666;
+}
+
+.template-modal-close:hover {
+    background: #e9ecef;
+    color: #333;
+}
+
+.template-modal-close .material-icons {
+    font-size: 20px;
+}
+
+/* Modal Body */
+.template-modal-body {
+    padding: 25px;
+    max-height: calc(90vh - 80px);
+    overflow-y: auto;
+}
+
+/* Template Upload Section */
+.template-upload-zone {
+    border: 2px dashed #007bff;
+    border-radius: 8px;
+    padding: 40px 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: #f8f9ff;
+}
+
+.template-upload-zone:hover,
+.template-upload-zone.dragover {
+    border-color: #0056b3;
+    background: #f0f4ff;
+    transform: translateY(-2px);
+}
+
+.template-upload-zone .material-icons {
+    font-size: 48px;
+    color: #007bff;
+    margin-bottom: 15px;
+}
+
+.template-upload-zone h4 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 18px;
+}
+
+.template-upload-zone p {
+    margin: 5px 0;
+    color: #666;
+}
+
+.template-upload-zone small {
+    color: #888;
+    font-size: 12px;
+}
+
+/* Template Info Section */
+.template-info-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+    align-items: start;
+}
+
+.template-file-info {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid #28a745;
+}
+
+.template-file-info h4 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 16px;
+}
+
+.template-file-info p {
+    margin: 5px 0;
+    color: #666;
+    font-size: 14px;
+}
+
+/* Available Columns */
+.available-columns h4 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 16px;
+}
+
+.columns-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 5px;
+}
+
+.column-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.column-item:hover {
+    background: #f8f9fa;
+}
+
+.column-name {
+    font-size: 14px;
+    color: #333;
+    flex: 1;
+}
+
+.copy-placeholder-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    color: #007bff;
+    transition: all 0.2s ease;
+}
+
+.copy-placeholder-btn:hover {
+    background: #e3f2fd;
+    color: #0056b3;
+}
+
+.copy-placeholder-btn .material-icons {
+    font-size: 16px;
+}
+
+.no-columns {
+    text-align: center;
+    color: #888;
+    font-style: italic;
+    padding: 20px;
+}
+
+/* Template Actions */
+.template-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+.template-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 140px;
+}
+
+.template-btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.template-btn-secondary:hover {
+    background: #5a6268;
+}
+
+.template-btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.template-btn-primary:hover {
+    background: #0056b3;
+}
+
+.template-btn:disabled {
+    background: #e9ecef;
+    color: #6c757d;
+    cursor: not-allowed;
+}
+
+.template-btn:disabled:hover {
+    background: #e9ecef;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .floating-mail-button {
+        bottom: 20px;
+        right: 20px;
+        padding: 12px 16px;
+    }
+    
+    .floating-button-text {
+        display: none;
+    }
+    
+    .template-modal-content {
+        width: 95%;
+        margin: 10px;
+    }
+    
+    .template-modal-body {
+        padding: 20px;
+    }
+    
+    .template-info-section {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .template-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .template-btn {
+        width: 100%;
+        max-width: 200px;
+    }
+}
+
+/* Animation for floating button appearance */
+@keyframes slideInUp {
+    from {
+        transform: translateY(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Custom scrollbar for columns list */
+.columns-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.columns-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.columns-list::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.columns-list::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
