@@ -3592,14 +3592,21 @@ class TextParser {
             
             // Now recreate filteredData and originalData as independent copies
             console.log('Creating fresh copies of filteredData and originalData');
-            this.filteredData = this.data.map(row => [...row]);
             this.originalData = this.data.map(row => [...row]);
+            
+            // For filteredData, we need to preserve existing filter state
+            // We'll create a temporary copy that gets enriched, then re-apply filters at the end
+            const tempFilteredData = this.data.map(row => [...row]);
             
             console.log(`After column insertion - Headers: ${this.headers.length}, Data columns: ${this.data[0]?.length || 0}, FilteredData columns: ${this.filteredData[0]?.length || 0}, OriginalData columns: ${this.originalData[0]?.length || 0}`);
             
             // IMPORTANT: Update column filter indices after inserting new columns
             // When we insert columns, existing filter indices become invalid
             this.updateColumnFilterIndices(insertIndex, newColumns.length);
+            
+            // Check if there are any active filters that need to be preserved
+            const hasActiveFilters = Object.keys(this.columnFilters).length > 0;
+            console.log(`Active filters detected: ${hasActiveFilters}, Filter count: ${Object.keys(this.columnFilters).length}`);
             
             // Now enrich data with batch processing for performance
             // At this point, all rows already have blank columns inserted at correct positions
@@ -3649,8 +3656,8 @@ class TextParser {
                         for (let j = 0; j < newColumns.length; j++) {
                             const value = customerData[j];
                             row[insertIndex + j] = value;
-                            // Update corresponding positions in the independent copies
-                            this.filteredData[actualRowIndex][insertIndex + j] = value;
+                            // Only update originalData during enrichment
+                            // filteredData will be rebuilt after enrichment based on filters
                             this.originalData[actualRowIndex][insertIndex + j] = value;
                         }
                     }
@@ -3701,6 +3708,18 @@ class TextParser {
             }
             
             this.updateProgress(progressModal, 'Updating table...', 95);
+            
+            // CRITICAL: Re-apply existing filters after enrichment
+            // This ensures that any filters that were active before enrichment remain active
+            if (hasActiveFilters) {
+                console.log('Re-applying existing filters after enrichment...');
+                this.filterData(); // This will rebuild this.filteredData based on current filters and enriched data
+                console.log(`Filter re-applied - Filtered rows: ${this.filteredData.length}/${this.data.length}`);
+            } else {
+                // If no filters were active, filteredData should be a copy of the enriched data
+                this.filteredData = this.data.map(row => [...row]);
+                console.log('No active filters - filteredData set to full enriched dataset');
+            }
             
             // No need to update filteredData and originalData here as they're already updated above
             
