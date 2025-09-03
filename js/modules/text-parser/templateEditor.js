@@ -172,12 +172,15 @@ class TemplateEditor {
 
     populateColumns() {
         const container = this.editorModal.querySelector('#editorColumnsContainer');
-        const headers = this.textParser.headers || [];
+        // Use visible headers instead of all headers to respect column management
+        const visibleHeadersWithIndices = this.textParser.getVisibleHeadersWithIndices ? 
+            this.textParser.getVisibleHeadersWithIndices() : 
+            (this.textParser.headers || []).map((header, index) => ({ header, index }));
         
         container.innerHTML = '';
         this.columnElements = [];
         
-        headers.forEach((header, index) => {
+        visibleHeadersWithIndices.forEach(({ header, index }) => {
             const columnElement = document.createElement('div');
             columnElement.className = 'draggable-column';
             columnElement.draggable = true;

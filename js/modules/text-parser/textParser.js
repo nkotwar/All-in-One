@@ -41,6 +41,24 @@ class TextParser {
         this.hiddenColumns = new Set();
         this.filteredData = [];
         this.columnFilters = {}; // Store active filters for each column
+        
+        // Default hidden columns list (case-insensitive matching)
+        this.defaultHiddenColumns = new Set([
+            'GENDER', 'MOBILE_BANKING', 'FATHER_NAME', 'EMAIL', 'Uncleared Balance', 
+            'OCC Balance', 'Irregularity', 'IRAC New', 'IRAC Old', 'Last Limit Approved Date',
+            'UIPY', 'INCA', 'Total URI', 'Increment', 'Accrual', 'Adjustment', 'Penal Interest',
+            'Total Outstanding', 'Disbursement Date', 'EMI Paid', 'EMI Pending', 'Status Code 1',
+            'Status Code 2', 'Unapplied Amount', 'GL Code', 'Days Past Due', 'Interest Due',
+            'Total Due', 'Classification Code', 'Current Rate', 'Base Rate', 'Spread Rate',
+            'Penal Rate', 'Provision Amount', 'Next Due Date', 'Principal Due', 'Interest Accrued',
+            'EMI Due', 'Charges Due', 'Penal Charges', 'Advance EMI', 'Excess Payment',
+            'Advance Interest', 'Current Balance', 'Last Payment Date', 'Payment Status',
+            'Last Review Date', 'Original Sanctioned', 'Insurance Premium', 'Processing Fee',
+            'Legal Fee', 'Documentation Fee', 'CIBIL Score', 'Risk Category', 'Prod Code',
+            'Collection Amount', 'Status', 'Card Issued', 'INB Flag', 'Nominee', 'Interest Available',
+            'SB_BAL', 'CD_BAL', 'INTERNET_BANKING', 'ATM_FLAG', 'CUSTOMER_TYPE', 'CREATE_DT'
+        ]);
+        
         this.loadingOverlay = null;
     this.currentFileName = null; // Track current file name for presets
     // Pending UI state when elements are not mounted yet
@@ -388,6 +406,7 @@ class TextParser {
             // Reset visibility and apply filename-based presets
             this.hiddenColumns = new Set();
             this.maybeApplyCustomerContactPreset();
+            this.applyDefaultHiddenColumns();
 
             // Page size all
             this.pageSize = 'all';
@@ -556,6 +575,7 @@ class TextParser {
                         this.originalData = [...this.data]; this.filteredData = [...this.data];
                         this.hiddenColumns = new Set();
                         this.maybeApplyCustomerContactPreset();
+                        this.applyDefaultHiddenColumns();
                         this.pageSize = 'all';
                         const pageSizeSelect = document.getElementById('pageSize');
                         if (pageSizeSelect) pageSizeSelect.value = 'all';
@@ -584,6 +604,7 @@ class TextParser {
                 this.originalData = [...data]; this.filteredData = [...data];
                 this.hiddenColumns = new Set();
                 this.maybeApplyCustomerContactPreset();
+                this.applyDefaultHiddenColumns();
                 this.pageSize = 'all';
                 const pageSizeSelect = document.getElementById('pageSize');
                 if (pageSizeSelect) pageSizeSelect.value = 'all';
@@ -608,6 +629,7 @@ class TextParser {
                 this.originalData = [...data]; this.filteredData = [...data];
                 this.hiddenColumns = new Set();
                 this.maybeApplyCustomerContactPreset();
+                this.applyDefaultHiddenColumns();
                 this.pageSize = 'all';
                 const pageSizeSelect = document.getElementById('pageSize');
                 if (pageSizeSelect) pageSizeSelect.value = 'all';
@@ -1058,6 +1080,9 @@ class TextParser {
             // Reset visibility for a fresh dataset and apply any filename-based presets
             this.hiddenColumns = new Set();
             this.maybeApplyCustomerContactPreset();
+            
+            // Apply default hidden columns based on column names
+            this.applyDefaultHiddenColumns();
 
             // Set page size to "all" by default and update the dropdown
             this.pageSize = 'all';
@@ -1073,7 +1098,16 @@ class TextParser {
             // Auto-analyze data when loaded
             this.performDataAnalysis();
             
-            this.showSuccessMessage(`Successfully parsed ${this.data.length} rows with ${this.headers.length} columns.`);
+            // Show success message with column visibility info
+            const visibleColumns = this.headers.length - this.hiddenColumns.size;
+            const hiddenCount = this.hiddenColumns.size;
+            
+            let message = `Successfully parsed ${this.data.length} rows with ${this.headers.length} columns.`;
+            if (hiddenCount > 0) {
+                message += ` (${visibleColumns} visible, ${hiddenCount} auto-hidden)`;
+            }
+            
+            this.showSuccessMessage(message);
 
             // Trigger event for Word Template Generator
             this.triggerDataParsingComplete();
@@ -3480,12 +3514,10 @@ class TextParser {
             
             // Parse customer CSV
             const customerData = this.parseCustomerCSV(csvContent);
-            console.log(`Loaded ${customerData.length} customer records`);
             
-            // Debug: Log first few customer records to see structure
-            if (customerData.length > 0) {
+            // Debug: Log first few customer records to see structure (only if needed)
+            if (customerData.length > 0 && customerData.length < 10) {
                 console.log('Sample customer record:', customerData[0]);
-                console.log('Customer data keys:', Object.keys(customerData[0]));
             }
             
             this.updateProgress(progressModal, 'Finding customer column...', 40);
@@ -3495,7 +3527,6 @@ class TextParser {
             if (customerColumnIndex === -1) {
                 throw new Error('No customer number column found in current data');
             }
-            console.log(`Found customer column at index ${customerColumnIndex}: ${this.headers[customerColumnIndex]}`);
             
             this.updateProgress(progressModal, 'Creating customer lookup map...', 50);
             
@@ -3521,7 +3552,6 @@ class TextParser {
                 }
             });
             
-            console.log(`Created customer lookup map with ${mapEntries} entries`);
             if (mapEntries === 0) {
                 throw new Error('No valid customer numbers found in CUSTOMER_CONTACT file');
             }
@@ -3535,11 +3565,23 @@ class TextParser {
             // Insert new columns into headers
             this.headers.splice(insertIndex, 0, ...newColumns);
             
+            // Apply default hiding to newly added columns
+            newColumns.forEach((columnName, index) => {
+                const actualIndex = insertIndex + index;
+                const columnLower = columnName.toLowerCase().trim();
+                
+                for (const defaultHiddenColumn of this.defaultHiddenColumns) {
+                    const defaultLower = defaultHiddenColumn.toLowerCase().trim();
+                    if (columnLower === defaultLower || columnLower.includes(defaultLower) || defaultLower.includes(columnLower)) {
+                        this.hiddenColumns.add(actualIndex);
+                        break;
+                    }
+                }
+            });
+            
             // Track successful matches for debugging
             let successfulMatches = 0;
             let totalProcessed = 0;
-            
-            console.log(`Before enrichment - Headers: ${this.headers.length}, Data columns: ${this.data[0]?.length || 0}`);
             
             // Safety check: If data columns already exceed expected, reset the structure
             const expectedColumns = this.headers.length;
@@ -3571,8 +3613,6 @@ class TextParser {
                         }
                     });
                 }
-                
-                console.log(`Structure fixed - Headers: ${this.headers.length}, Data columns: ${this.data[0]?.length || 0}`);
             }
             
             // Check if filteredData and originalData are references to the same arrays
@@ -3580,33 +3620,28 @@ class TextParser {
             const isOriginalDataSameRef = this.originalData === this.data;
             const isFilteredOriginalSame = this.filteredData === this.originalData;
             
-            console.log(`Array references - filteredData same as data: ${isFilteredDataSameRef}, originalData same as data: ${isOriginalDataSameRef}, filteredData same as originalData: ${isFilteredOriginalSame}`);
-            
-            // Only process this.data array to avoid any reference issues
-            console.log(`Processing only this.data array to avoid reference issues`);
-            
             this.data.forEach(row => {
                 // Insert blank values for all new columns at the correct position
                 row.splice(insertIndex, 0, ...new Array(newColumns.length).fill(''));
             });
             
             // Now recreate filteredData and originalData as independent copies
-            console.log('Creating fresh copies of filteredData and originalData');
             this.originalData = this.data.map(row => [...row]);
             
             // For filteredData, we need to preserve existing filter state
             // We'll create a temporary copy that gets enriched, then re-apply filters at the end
             const tempFilteredData = this.data.map(row => [...row]);
             
-            console.log(`After column insertion - Headers: ${this.headers.length}, Data columns: ${this.data[0]?.length || 0}, FilteredData columns: ${this.filteredData[0]?.length || 0}, OriginalData columns: ${this.originalData[0]?.length || 0}`);
-            
             // IMPORTANT: Update column filter indices after inserting new columns
             // When we insert columns, existing filter indices become invalid
             this.updateColumnFilterIndices(insertIndex, newColumns.length);
             
+            // IMPORTANT: Update hidden column indices after inserting new columns
+            // When we insert columns, existing hidden column indices become invalid
+            this.updateHiddenColumnIndices(insertIndex, newColumns.length);
+            
             // Check if there are any active filters that need to be preserved
             const hasActiveFilters = Object.keys(this.columnFilters).length > 0;
-            console.log(`Active filters detected: ${hasActiveFilters}, Filter count: ${Object.keys(this.columnFilters).length}`);
             
             // Now enrich data with batch processing for performance
             // At this point, all rows already have blank columns inserted at correct positions
@@ -3623,20 +3658,10 @@ class TextParser {
                     // Get customer number from the row (at original position, before our insertions)
                     const customerNo = row[customerColumnIndex]?.toString().trim();
                     
-                    // Debug log for first few rows
-                    if (totalProcessed <= 5) {
-                        console.log(`Row ${totalProcessed}: Customer No = "${customerNo}"`);
-                    }
-                    
                     const customerInfo = customerMap.get(customerNo);
                     
                     if (customerInfo) {
                         successfulMatches++;
-                        
-                        // Debug log for first match
-                        if (successfulMatches === 1) {
-                            console.log('First match found:', customerInfo);
-                        }
                         
                         // Prepare customer data array with fallback field names
                         const customerData = [
@@ -3672,15 +3697,11 @@ class TextParser {
                 await new Promise(resolve => setTimeout(resolve, 1));
             }
             
-            console.log(`Enrichment complete: ${successfulMatches}/${totalProcessed} rows matched with customer data`);
-            
             // Comprehensive validation of all data arrays
             const headerCount = this.headers.length;
             const dataColumns = this.data[0]?.length || 0;
             const filteredColumns = this.filteredData[0]?.length || 0;
             const originalColumns = this.originalData[0]?.length || 0;
-            
-            console.log(`Final validation - Headers: ${headerCount}, Data: ${dataColumns}, Filtered: ${filteredColumns}, Original: ${originalColumns}`);
             
             // Check all arrays for consistency
             if (headerCount !== dataColumns || headerCount !== filteredColumns || headerCount !== originalColumns) {
@@ -3691,7 +3712,6 @@ class TextParser {
                 
                 [this.data, this.filteredData, this.originalData].forEach((dataArray, arrayIndex) => {
                     const arrayName = ['data', 'filteredData', 'originalData'][arrayIndex];
-                    console.log(`Fixing ${arrayName} array...`);
                     
                     dataArray.forEach(row => {
                         if (row.length > targetLength) {
@@ -3703,8 +3723,6 @@ class TextParser {
                         }
                     });
                 });
-                
-                console.log(`Structure fixed - all arrays now have ${targetLength} columns`);
             }
             
             this.updateProgress(progressModal, 'Updating table...', 95);
@@ -3712,13 +3730,10 @@ class TextParser {
             // CRITICAL: Re-apply existing filters after enrichment
             // This ensures that any filters that were active before enrichment remain active
             if (hasActiveFilters) {
-                console.log('Re-applying existing filters after enrichment...');
                 this.filterData(); // This will rebuild this.filteredData based on current filters and enriched data
-                console.log(`Filter re-applied - Filtered rows: ${this.filteredData.length}/${this.data.length}`);
             } else {
                 // If no filters were active, filteredData should be a copy of the enriched data
                 this.filteredData = this.data.map(row => [...row]);
-                console.log('No active filters - filteredData set to full enriched dataset');
             }
             
             // No need to update filteredData and originalData here as they're already updated above
@@ -3802,10 +3817,8 @@ class TextParser {
         // Auto-detect delimiter (comma or tab)
         const firstLine = lines[0];
         const delimiter = firstLine.includes('\t') ? '\t' : ',';
-        console.log(`Detected CSV delimiter: "${delimiter}"`);
         
         const headers = firstLine.split(delimiter).map(h => h.trim().replace(/['"]/g, ''));
-        console.log('CSV Headers:', headers);
         
         const data = [];
         
@@ -3820,7 +3833,6 @@ class TextParser {
             }
         }
         
-        console.log(`Parsed ${data.length} customer records from CSV`);
         return data;
     }
 
@@ -3837,12 +3849,46 @@ class TextParser {
         return -1;
     }
 
+    // Get visible headers based on column visibility settings
+    getVisibleHeaders() {
+        return this.headers.filter((_, index) => !this.hiddenColumns.has(index));
+    }
+
+    // Get visible headers with their original indices
+    getVisibleHeadersWithIndices() {
+        return this.headers.map((header, index) => ({ header, index }))
+                          .filter(({ index }) => !this.hiddenColumns.has(index));
+    }
+
+    // Apply default hidden columns based on header names
+    applyDefaultHiddenColumns() {
+        if (!this.headers || this.headers.length === 0) return;
+        
+        this.headers.forEach((header, index) => {
+            // Check if header matches any default hidden column (case-insensitive)
+            const headerLower = header.toLowerCase().trim();
+            
+            for (const defaultHiddenColumn of this.defaultHiddenColumns) {
+                const defaultLower = defaultHiddenColumn.toLowerCase().trim();
+                
+                // Exact match or contains match for flexibility
+                if (headerLower === defaultLower || headerLower.includes(defaultLower) || defaultLower.includes(headerLower)) {
+                    this.hiddenColumns.add(index);
+                    break;
+                }
+            }
+        });
+        
+        // Log hidden columns for user awareness (only if any were hidden)
+        if (this.hiddenColumns.size > 0) {
+            const hiddenColumnNames = Array.from(this.hiddenColumns).map(index => this.headers[index]);
+            console.log(`Auto-hidden ${this.hiddenColumns.size} columns: ${hiddenColumnNames.slice(0, 5).join(', ')}${hiddenColumnNames.length > 5 ? '...' : ''}`);
+        }
+    }
+
     updateColumnFilterIndices(insertIndex, numColumnsInserted) {
         // When columns are inserted, we need to adjust all column filter indices
         // that come after the insertion point
-        console.log(`Updating column filter indices - Insert at: ${insertIndex}, Columns added: ${numColumnsInserted}`);
-        console.log('Before update:', Object.keys(this.columnFilters));
-        
         const updatedFilters = {};
         
         Object.keys(this.columnFilters).forEach(oldIndex => {
@@ -3855,11 +3901,28 @@ class TextParser {
             }
             
             updatedFilters[newIndex] = this.columnFilters[oldIndex];
-            console.log(`Filter moved from column ${oldIndex} to column ${newIndex}`);
         });
         
         this.columnFilters = updatedFilters;
-        console.log('After update:', Object.keys(this.columnFilters));
+    }
+
+    updateHiddenColumnIndices(insertIndex, numColumnsInserted) {
+        // When columns are inserted, we need to adjust all hidden column indices
+        // that come after the insertion point
+        const updatedHiddenColumns = new Set();
+        
+        this.hiddenColumns.forEach(oldIndex => {
+            let newIndex = oldIndex;
+            
+            // If the old index is at or after the insertion point, shift it by the number of inserted columns
+            if (oldIndex >= insertIndex) {
+                newIndex = oldIndex + numColumnsInserted;
+            }
+            
+            updatedHiddenColumns.add(newIndex);
+        });
+        
+        this.hiddenColumns = updatedHiddenColumns;
     }
 
 }

@@ -230,12 +230,15 @@ class WordTemplateGenerator {
             
             const totalPlaceholders = this.templateBookmarks.length + this.templatePlaceholders.length;
             
-            // Log detected placeholder patterns for debugging
-            if (Object.keys(this.placeholderInfo).length > 0) {
-                console.log('🔍 Detected placeholder patterns:');
-                Object.entries(this.placeholderInfo).forEach(([placeholder, info]) => {
-                    console.log(`  ${placeholder} → ${info.pattern} (${info.fullMatch})`);
+            // Log detected placeholder patterns for debugging (only for small templates)
+            if (Object.keys(this.placeholderInfo).length > 0 && Object.keys(this.placeholderInfo).length <= 5) {
+                console.log('Detected placeholder patterns:');
+                Object.entries(this.placeholderInfo).slice(0, 3).forEach(([placeholder, info]) => {
+                    console.log(`  ${placeholder} → ${info.pattern}`);
                 });
+                if (Object.keys(this.placeholderInfo).length > 3) {
+                    console.log(`  ... and ${Object.keys(this.placeholderInfo).length - 3} more`);
+                }
             }
             
             // Update UI
@@ -286,16 +289,19 @@ class WordTemplateGenerator {
 
     populateAvailableColumns() {
         const columnsList = this.templateModal.querySelector('#templateColumnsList');
-        const headers = this.textParser.headers || [];
+        // Use visible headers instead of all headers to respect column management
+        const visibleHeaders = this.textParser.getVisibleHeaders ? 
+            this.textParser.getVisibleHeaders() : 
+            (this.textParser.headers || []);
         
         columnsList.innerHTML = '';
         
-        if (headers.length === 0) {
-            columnsList.innerHTML = '<p class="no-columns">No data columns available</p>';
+        if (visibleHeaders.length === 0) {
+            columnsList.innerHTML = '<p class="no-columns">No visible data columns available</p>';
             return;
         }
         
-        headers.forEach((header, index) => {
+        visibleHeaders.forEach((header, index) => {
             const columnItem = document.createElement('div');
             columnItem.className = 'column-item';
             columnItem.innerHTML = `
@@ -417,19 +423,11 @@ class WordTemplateGenerator {
             const quickMappings = {};
             const placeholders = [...this.templateBookmarks, ...this.templatePlaceholders];
             
-            console.log('🔍 Quick Generate Auto-Mapping Analysis:');
-            console.log('Placeholders found:', placeholders);
-            console.log('Available columns:', headers);
-            
             // Enhanced auto-mapping with multiple strategies
             placeholders.forEach(placeholder => {
                 const bestMatch = this.findBestQuickMatch(placeholder, headers);
                 quickMappings[placeholder] = bestMatch;
-                
-                console.log(`📍 Mapping: "${placeholder}" → "${bestMatch}"`);
             });
-            
-            console.log('🎯 Final mappings:', quickMappings);
             
             // Prepare mapped data
             const mappedData = filteredData.map(row => {
