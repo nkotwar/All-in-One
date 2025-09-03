@@ -496,7 +496,13 @@ document.getElementById('fillAndOpen').addEventListener('click', async () => {
 
                 processor.replaceBookmarks(replacements);
                 const filledDocx = await processor.generate();
-                zip.file(fileName.replace('.pdf', '.docx'), filledDocx);
+                // Ensure the file inside the ZIP has a proper .docx extension
+                const zipDocxName = (() => {
+                    // Remove existing .pdf/.docx extension (any case), then append .docx
+                    const base = fileName.replace(/\.(pdf|docx)$/i, '');
+                    return `${base}.docx`;
+                })();
+                zip.file(zipDocxName, filledDocx);
             }
         }
 

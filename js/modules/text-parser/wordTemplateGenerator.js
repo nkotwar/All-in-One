@@ -89,8 +89,46 @@ class WordTemplateGenerator {
                         <i class="material-icons">upload_file</i>
                         <h4>Upload Word Template</h4>
                         <p>Drop a .docx file here or click to browse</p>
-                        <p><small>The template should contain bookmarks where you want to insert data</small></p>
+                        <p><small>
+                            Use {{Column Name}} placeholders (recommended) or Word bookmarks named after your column headers where you want data to appear.
+                        </small></p>
                         <input type="file" id="templateFileInput" accept=".docx" style="display: none;">
+                    </div>
+                </div>
+                
+                <div class="template-help" style="margin-top: 16px;">
+                    <button id="toggleTemplateHelp" class="template-btn template-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="material-icons" aria-hidden="true">help_outline</i>
+                        How to prepare your template
+                        <i class="material-icons" aria-hidden="true" style="margin-left: 4px;">expand_more</i>
+                    </button>
+                    <div id="templateHelpContent" style="display: none; margin-top: 10px;">
+                        <ul style="margin: 0 0 8px 18px;">
+                            <li>
+                                Placeholders: type {{Header Name}} exactly as your visible column header. Example: {{Customer Number}}, {{Account Number}}.
+                            </li>
+                            <li>
+                                Bookmarks: alternatively, insert a bookmark named exactly like the column header. Works best for single-document generation.
+                            </li>
+                            <li>
+                                Multi-row output: Quick Generate (All Rows) duplicates the whole page/section once per data row with automatic page breaks.
+                            </li>
+                            <li>
+                                Keep each placeholder contiguous (no line breaks or styling inside {{ and }}), otherwise Word may split the text and it won’t be replaced.
+                            </li>
+                            <li>
+                                Matching is case-insensitive, but spacing and punctuation should mirror the column header for best results.
+                            </li>
+                            <li>
+                                Only visible columns are offered for mapping. Unhide a column in the table if you want it available here.
+                            </li>
+                            <li>
+                                Formatting: values are inserted as text. Apply number/date formatting in Word after generation, or pre-format in the table.
+                            </li>
+                        </ul>
+                        <div style="font-size: 12px; color: #555;">
+                            Tip: After loading a template, use the “Available Data Columns” list to copy exact placeholders with one click.
+                        </div>
                     </div>
                 </div>
                 
@@ -143,6 +181,8 @@ class WordTemplateGenerator {
         const changeTemplateBtn = modal.querySelector('#changeTemplateBtn');
         const openEditorBtn = modal.querySelector('#openEditorBtn');
         const generatePdfBtn = modal.querySelector('#generatePdfBtn');
+    const toggleHelpBtn = modal.querySelector('#toggleTemplateHelp');
+    const helpContent = modal.querySelector('#templateHelpContent');
         
         // Close modal
         closeBtn.addEventListener('click', () => this.closeTemplateModal());
@@ -176,6 +216,17 @@ class WordTemplateGenerator {
         generatePdfBtn.addEventListener('click', () => {
             this.generateQuickReport();
         });
+
+        // Toggle help content
+        if (toggleHelpBtn && helpContent) {
+            toggleHelpBtn.addEventListener('click', () => {
+                const isOpen = helpContent.style.display === 'block';
+                helpContent.style.display = isOpen ? 'none' : 'block';
+                const icons = toggleHelpBtn.querySelectorAll('i.material-icons');
+                const expander = icons[icons.length - 1];
+                if (expander) expander.textContent = isOpen ? 'expand_more' : 'expand_less';
+            });
+        }
     }
 
     handleDragOver(e) {

@@ -42,6 +42,25 @@ class TextParser {
         this.filteredData = [];
         this.columnFilters = {}; // Store active filters for each column
         
+        // Performance optimization: Debounced analysis system
+        this.analysisTimer = null;
+        this.analysisDelay = 300; // 300ms debounce delay
+        this.isAnalysisDirty = false;
+        this.cachedStats = null;
+        
+        // Performance optimization: Virtual scrolling system
+        this.virtualScrolling = {
+            enabled: false,
+            rowHeight: 35, // Standard row height in pixels
+            containerHeight: 400, // Default container height
+            visibleRows: 0, // Number of rows that fit in viewport
+            bufferRows: 5, // Extra rows to render for smooth scrolling
+            scrollTop: 0,
+            startIndex: 0,
+            endIndex: 0,
+            totalHeight: 0
+        };
+        
         // Default hidden columns list (case-insensitive matching)
         this.defaultHiddenColumns = new Set([
             'GENDER', 'MOBILE_BANKING', 'FATHER_NAME', 'EMAIL', 'Uncleared Balance', 
@@ -89,6 +108,266 @@ class TextParser {
         
         // Initialize Word Template Generator
         this.initializeWordTemplateGenerator();
+    }
+
+    // Performance optimization: Debounced analysis system
+    markAnalysisDirty() {
+        this.isAnalysisDirty = true;
+        this.cachedStats = null;
+        
+        // Clear existing timer
+        if (this.analysisTimer) {
+            clearTimeout(this.analysisTimer);
+        }
+        
+        // Set new debounced timer
+        this.analysisTimer = setTimeout(() => {
+            this.performDataAnalysisImmediate();
+            this.analysisTimer = null;
+        }, this.analysisDelay);
+    }
+
+    // Force immediate analysis (for user-triggered actions)
+    performDataAnalysisImmediate() {
+        if (!this.isAnalysisDirty && this.cachedStats) {
+            // Use cached results if data hasn't changed
+            this.renderStatistics(this.cachedStats);
+            return;
+        }
+
+        // Performance tracking
+        const startTime = performance.now();
+
+        const statsPanel = document.getElementById('statsPanel');
+        const statsGrid = document.getElementById('statsGrid');
+        
+        let stats;
+        
+        // Use filtered data for analysis to reflect current view
+        const currentData = this.filteredData || this.data;
+        
+        // Check if this is a bank deposits report and use specialized analysis
+        if (this.metadata && window.BankDepositsParser && this.headers.includes('Customer Number')) {
+            const parser = new window.BankDepositsParser();
+            const bankingReport = parser.generateBankingReport(currentData, this.metadata);
+            stats = this.combineBankingAnalysis(this.calculateStatistics(currentData), bankingReport);
+        } else {
+            stats = this.calculateStatistics(currentData);
+        }
+        
+        // Cache the results
+        this.cachedStats = stats;
+        this.isAnalysisDirty = false;
+        
+        this.renderStatistics(stats);
+        if (statsPanel) statsPanel.style.display = 'block';
+
+        // Performance logging (development only)
+        const endTime = performance.now();
+        console.debug(`📊 Analysis completed in ${(endTime - startTime).toFixed(2)}ms`);
+    }
+
+    // Public method for backwards compatibility - now uses debouncing
+    performDataAnalysis() {
+        this.markAnalysisDirty();
+    }
+
+    // Cleanup method for performance optimization
+    cleanup() {
+        if (this.analysisTimer) {
+            clearTimeout(this.analysisTimer);
+            this.analysisTimer = null;
+        }
+        this.cachedStats = null;
+        this.isAnalysisDirty = false;
+        
+        // Cleanup virtual scrolling
+        this.cleanupVirtualScrollContainer();
+    }
+
+    // Virtual scrolling optimization
+    initializeVirtualScrolling() {
+        const tableContainer = document.getElementById('tableContainer');
+        const threshold = 1000; // Enable virtual scrolling for datasets > 1000 rows
+
+        if (this.filteredData.length > threshold && tableContainer) {
+            this.virtualScrolling.enabled = true;
+            this.virtualScrolling.containerHeight = Math.min(600, window.innerHeight * 0.6);
+            this.virtualScrolling.visibleRows = Math.ceil(this.virtualScrolling.containerHeight / this.virtualScrolling.rowHeight);
+            this.virtualScrolling.totalHeight = this.filteredData.length * this.virtualScrolling.rowHeight;
+            
+            this.setupVirtualScrollContainer();
+            this.updatePerformanceIndicators();
+            console.debug(`🚀 Virtual scrolling enabled for ${this.filteredData.length} rows`);
+        } else {
+            this.virtualScrolling.enabled = false;
+            this.cleanupVirtualScrollContainer();
+            this.updatePerformanceIndicators();
+        }
+    }
+
+    setupVirtualScrollContainer() {
+        const tableContainer = document.getElementById('tableContainer');
+        const table = document.getElementById('dataTable');
+        
+        if (!tableContainer || !table) return;
+
+        // Create virtual scroll wrapper
+        let scrollWrapper = document.getElementById('virtualScrollWrapper');
+        if (!scrollWrapper) {
+            scrollWrapper = document.createElement('div');
+            scrollWrapper.id = 'virtualScrollWrapper';
+            scrollWrapper.style.cssText = `
+                height: ${this.virtualScrolling.containerHeight}px;
+                overflow-y: auto;
+                border: 1px solid #ddd;
+                position: relative;
+            `;
+            
+            // Insert wrapper around table
+            tableContainer.insertBefore(scrollWrapper, table);
+            scrollWrapper.appendChild(table);
+        }
+
+        // Create spacer for total height
+        let spacer = document.getElementById('virtualScrollSpacer');
+        if (!spacer) {
+            spacer = document.createElement('div');
+            spacer.id = 'virtualScrollSpacer';
+            scrollWrapper.appendChild(spacer);
+        }
+        
+        spacer.style.height = `${this.virtualScrolling.totalHeight}px`;
+        
+        // Add scroll event listener
+        scrollWrapper.removeEventListener('scroll', this.handleVirtualScroll.bind(this));
+        scrollWrapper.addEventListener('scroll', this.handleVirtualScroll.bind(this));
+        
+        // Position table absolutely for virtual scrolling
+        table.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+        `;
+    }
+
+    cleanupVirtualScrollContainer() {
+        const scrollWrapper = document.getElementById('virtualScrollWrapper');
+        const table = document.getElementById('dataTable');
+        const tableContainer = document.getElementById('tableContainer');
+        
+        if (scrollWrapper && table && tableContainer) {
+            // Move table back to original container
+            tableContainer.appendChild(table);
+            scrollWrapper.remove();
+            
+            // Reset table styles
+            table.style.cssText = '';
+        }
+    }
+
+    handleVirtualScroll(event) {
+        const scrollTop = event.target.scrollTop;
+        this.virtualScrolling.scrollTop = scrollTop;
+        
+        // Calculate visible range
+        const startRow = Math.floor(scrollTop / this.virtualScrolling.rowHeight);
+        const endRow = Math.min(
+            this.filteredData.length,
+            startRow + this.virtualScrolling.visibleRows + this.virtualScrolling.bufferRows
+        );
+        
+        this.virtualScrolling.startIndex = Math.max(0, startRow - this.virtualScrolling.bufferRows);
+        this.virtualScrolling.endIndex = endRow;
+        
+        // Update table position and render visible rows
+        const table = document.getElementById('dataTable');
+        if (table) {
+            table.style.transform = `translateY(${this.virtualScrolling.startIndex * this.virtualScrolling.rowHeight}px)`;
+            this.renderVirtualTableBody();
+        }
+    }
+
+    renderVirtualTableBody() {
+        const tbody = document.getElementById('tableBody');
+        if (!tbody) return;
+
+        // Clear existing rows
+        tbody.innerHTML = '';
+
+        // Render only visible rows
+        const visibleData = this.filteredData.slice(
+            this.virtualScrolling.startIndex, 
+            this.virtualScrolling.endIndex
+        );
+
+        const fragment = document.createDocumentFragment();
+        
+        visibleData.forEach(row => {
+            const tr = document.createElement('tr');
+            row.forEach((cell, index) => {
+                if (!this.hiddenColumns.has(index)) {
+                    const td = document.createElement('td');
+                    td.textContent = cell || '';
+                    td.title = cell || ''; // Tooltip for long content
+                    tr.appendChild(td);
+                }
+            });
+            fragment.appendChild(tr);
+        });
+
+        tbody.appendChild(fragment);
+    }
+
+    // Update virtual scrolling parameters when data changes
+    updateVirtualScrolling() {
+        if (this.virtualScrolling.enabled) {
+            this.virtualScrolling.totalHeight = this.filteredData.length * this.virtualScrolling.rowHeight;
+            
+            const spacer = document.getElementById('virtualScrollSpacer');
+            if (spacer) {
+                spacer.style.height = `${this.virtualScrolling.totalHeight}px`;
+            }
+            
+            // Reset scroll position to top
+            const scrollWrapper = document.getElementById('virtualScrollWrapper');
+            if (scrollWrapper) {
+                scrollWrapper.scrollTop = 0;
+                this.virtualScrolling.scrollTop = 0;
+                this.virtualScrolling.startIndex = 0;
+                this.virtualScrolling.endIndex = Math.min(
+                    this.filteredData.length,
+                    this.virtualScrolling.visibleRows + this.virtualScrolling.bufferRows
+                );
+            }
+        }
+    }
+
+    // Show performance optimization status in UI
+    updatePerformanceIndicators() {
+        // Add virtual scrolling indicator to page size controls
+        const pageSizeContainer = document.getElementById('pageSize')?.parentElement;
+        if (pageSizeContainer) {
+            let indicator = pageSizeContainer.querySelector('.performance-indicator');
+            
+            if (this.virtualScrolling.enabled) {
+                if (!indicator) {
+                    indicator = document.createElement('div');
+                    indicator.className = 'performance-indicator';
+                    indicator.style.cssText = `
+                        font-size: 11px;
+                        color: #28a745;
+                        margin-top: 2px;
+                        font-weight: bold;
+                    `;
+                    pageSizeContainer.appendChild(indicator);
+                }
+                indicator.innerHTML = `🚀 Virtual scrolling active (${this.filteredData.length.toLocaleString()} rows)`;
+            } else if (indicator) {
+                indicator.remove();
+            }
+        }
     }
 
     // Method to register new parsers dynamically
@@ -1084,6 +1363,10 @@ class TextParser {
             // Apply default hidden columns based on column names
             this.applyDefaultHiddenColumns();
 
+            // Invalidate analysis cache for new dataset
+            this.isAnalysisDirty = true;
+            this.cachedStats = null;
+
             // Set page size to "all" by default and update the dropdown
             this.pageSize = 'all';
             const pageSizeSelect = document.getElementById('pageSize');
@@ -1095,8 +1378,8 @@ class TextParser {
             this.renderTable();
             this.showDataContainer();
             
-            // Auto-analyze data when loaded
-            this.performDataAnalysis();
+            // Auto-analyze data when loaded - use immediate analysis for new data
+            this.performDataAnalysisImmediate();
             
             // Show success message with column visibility info
             const visibleColumns = this.headers.length - this.hiddenColumns.size;
@@ -1917,6 +2200,9 @@ class TextParser {
     }
 
     renderTable() {
+        // Initialize virtual scrolling based on data size
+        this.initializeVirtualScrolling();
+        
         this.renderTableHeader();
         this.renderTableBody();
         this.renderPagination();
@@ -2039,12 +2325,22 @@ class TextParser {
     }
 
     renderTableBody() {
+        // Use virtual scrolling for large datasets
+        if (this.virtualScrolling.enabled) {
+            this.renderVirtualTableBody();
+            return;
+        }
+
+        // Traditional pagination rendering for smaller datasets
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = '';
 
         const startIndex = (this.currentPage - 1) * this.pageSize;
         const endIndex = this.pageSize === 'all' ? this.filteredData.length : startIndex + this.pageSize;
         const pageData = this.filteredData.slice(startIndex, endIndex);
+
+        // Use document fragment for better performance
+        const fragment = document.createDocumentFragment();
 
         pageData.forEach(row => {
             const tr = document.createElement('tr');
@@ -2056,13 +2352,29 @@ class TextParser {
                     tr.appendChild(td);
                 }
             });
-            tbody.appendChild(tr);
+            fragment.appendChild(tr);
         });
+
+        tbody.appendChild(fragment);
     }
 
     renderPagination() {
         const pagination = document.getElementById('pagination');
         pagination.innerHTML = '';
+
+        // Hide pagination when virtual scrolling is enabled
+        if (this.virtualScrolling.enabled) {
+            const info = document.createElement('div');
+            info.className = 'virtual-scroll-info';
+            info.innerHTML = `
+                <span style="color: #666; font-size: 14px;">
+                    🚀 Virtual scrolling enabled for ${this.filteredData.length.toLocaleString()} rows 
+                    <small>(scroll to view more)</small>
+                </span>
+            `;
+            pagination.appendChild(info);
+            return;
+        }
 
         if (this.pageSize === 'all') return;
 
@@ -2267,10 +2579,14 @@ class TextParser {
         
         this.filteredData = filtered;
         this.currentPage = 1;
+        
+        // Update virtual scrolling when data changes
+        this.updateVirtualScrolling();
+        
         this.renderTable();
         
-        // Update analysis to reflect filtered data
-        this.performDataAnalysis();
+        // Update analysis to reflect filtered data - use debounced analysis
+        this.markAnalysisDirty();
     }
 
     clearAllFilters() {
@@ -2291,9 +2607,12 @@ class TextParser {
             this.filteredData = [...this.originalData];
             this.currentPage = 1;
             
+            // Update virtual scrolling when data changes
+            this.updateVirtualScrolling();
+            
             // Update display
             this.renderTable();
-            this.performDataAnalysis();
+            this.markAnalysisDirty();
             
             this.hideLoading();
             
@@ -2401,29 +2720,6 @@ class TextParser {
         columnControls.style.display = isVisible ? 'none' : 'block';
     }
 
-    performDataAnalysis() {
-        const statsPanel = document.getElementById('statsPanel');
-        const statsGrid = document.getElementById('statsGrid');
-        
-        // Auto-analysis should always run when called
-        let stats;
-        
-        // Use filtered data for analysis to reflect current view
-        const currentData = this.filteredData || this.data;
-        
-        // Check if this is a bank deposits report and use specialized analysis
-        if (this.metadata && window.BankDepositsParser && this.headers.includes('Customer Number')) {
-            const parser = new window.BankDepositsParser();
-            const bankingReport = parser.generateBankingReport(currentData, this.metadata);
-            stats = this.combineBankingAnalysis(this.calculateStatistics(currentData), bankingReport);
-        } else {
-            stats = this.calculateStatistics(currentData);
-        }
-        
-        this.renderStatistics(stats);
-        statsPanel.style.display = 'block';
-    }
-
     combineBankingAnalysis(generalStats, bankingReport) {
         // Combine general statistics with banking-specific analysis
         const combinedStats = { ...generalStats };
@@ -2497,7 +2793,7 @@ class TextParser {
             filterIndicator.innerHTML = `
                 <div style="background: #e3f2fd; border: 1px solid #2196f3; border-radius: 4px; padding: 8px; margin-bottom: 15px; text-align: center;">
                     <strong>📊 Filtered Data Analysis</strong>
-                    <button onclick="window.textParserInstance.performDataAnalysis()" style="margin-left: 10px; padding: 2px 8px; font-size: 11px; background: #2196f3; color: white; border: none; border-radius: 3px; cursor: pointer;">🔄 Refresh</button>
+                    <button onclick="window.textParserInstance.performDataAnalysisImmediate()" style="margin-left: 10px; padding: 2px 8px; font-size: 11px; background: #2196f3; color: white; border: none; border-radius: 3px; cursor: pointer;">🔄 Refresh</button>
                     <button onclick="window.textParserInstance.clearAllFilters()" style="margin-left: 5px; padding: 2px 8px; font-size: 11px; background: #f44336; color: white; border: none; border-radius: 3px; cursor: pointer;">✖ Clear Filters</button><br>
                     <small>Analysis reflects ${stats.totalRows} filtered rows out of ${this.data.length} total rows</small>
                 </div>
@@ -3174,15 +3470,166 @@ class TextParser {
     }
 
     exportExcel(headers, data) {
-        // Simple Excel export using HTML table format
-        const excelContent = `
-            <table>
-                <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
-                ${data.map(row => `<tr>${row.map(cell => `<td>${cell || ''}</td>`).join('')}</tr>`).join('')}
-            </table>
-        `;
-        
-        this.downloadFile(excelContent, 'parsed_data.xls', 'application/vnd.ms-excel');
+        // Proper .xlsx export using JSZip (no Excel warning)
+        try {
+            if (typeof window.JSZip !== 'undefined') {
+                const blob = this.buildXlsxBlob(headers, data);
+                this.downloadBlob(blob, 'parsed_data.xlsx');
+            } else {
+                // Fallback: CSV with BOM to open cleanly in Excel
+                const csvContent = [
+                    headers.map(h => this.escapeCsv(h)).join(','),
+                    ...data.map(row => row.map(cell => this.escapeCsv(cell ?? '')).join(','))
+                ].join('\n');
+                const bomCsv = '\uFEFF' + csvContent; // UTF-8 BOM for Excel
+                this.downloadFile(bomCsv, 'parsed_data.csv', 'text/csv;charset=utf-8');
+            }
+        } catch (e) {
+            console.error('Excel export failed, falling back to CSV:', e);
+            const csvContent = [
+                headers.map(h => this.escapeCsv(h)).join(','),
+                ...data.map(row => row.map(cell => this.escapeCsv(cell ?? '')).join(','))
+            ].join('\n');
+            const bomCsv = '\uFEFF' + csvContent;
+            this.downloadFile(bomCsv, 'parsed_data.csv', 'text/csv;charset=utf-8');
+        }
+    }
+
+    // Build minimal XLSX workbook from headers + 2D array of rows
+    buildXlsxBlob(headers, data) {
+        const zip = new window.JSZip();
+
+        // Content Types
+        const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
+        zip.file('[Content_Types].xml', contentTypes);
+
+        // _rels/.rels
+        const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+        zip.folder('_rels').file('.rels', rootRels);
+
+        // xl/_rels/workbook.xml.rels
+        const wbRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+        zip.folder('xl').folder('_rels').file('workbook.xml.rels', wbRels);
+
+        // xl/workbook.xml
+        const workbook = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    <sheet name="Data" sheetId="1" r:id="rId1"/>
+  </sheets>
+</workbook>`;
+        zip.folder('xl').file('workbook.xml', workbook);
+
+        // xl/styles.xml (minimal stylesheet)
+        const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>
+  <fills count="1"><fill><patternFill patternType="none"/></fill></fills>
+  <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>
+  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+        zip.folder('xl').file('styles.xml', styles);
+
+        // xl/worksheets/sheet1.xml – write values; numbers as type n, strings as inlineStr
+        const rowsXml = [];
+        const totalRows = 1 + data.length;
+        for (let r = 1; r <= totalRows; r++) {
+            const cells = [];
+            const rowValues = r === 1 ? headers : data[r - 2];
+            for (let c = 0; c < headers.length; c++) {
+                const colRef = this.toXlsxColRef(c, r);
+                const v = rowValues?.[c] ?? '';
+                if (v === null || v === undefined || v === '') {
+                    cells.push(`<c r="${colRef}"/>`);
+                    continue;
+                }
+                // numeric?
+                const n = parseFloat(String(v).replace(/[\s,]/g, ''));
+                const isNumeric = !isNaN(n) && isFinite(n) && String(v).trim() !== '' && /^[-+]?\d*(?:[.,]\d+)?$/.test(String(v).replace(/,/g, '.'));
+                if (r === 1) {
+                    // headers always as inline strings
+                    cells.push(`<c r="${colRef}" t="inlineStr"><is><t>${this.escapeXml(String(v))}</t></is></c>`);
+                } else if (isNumeric) {
+                    cells.push(`<c r="${colRef}"><v>${String(v).replace(/,/g, '')}</v></c>`);
+                } else {
+                    cells.push(`<c r="${colRef}" t="inlineStr"><is><t>${this.escapeXml(String(v))}</t></is></c>`);
+                }
+            }
+            rowsXml.push(`<row r="${r}">${cells.join('')}</row>`);
+        }
+
+        const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    ${rowsXml.join('')}
+  </sheetData>
+</worksheet>`;
+        zip.folder('xl').folder('worksheets').file('sheet1.xml', sheet);
+
+        return zip.generateAsync({ type: 'blob' });
+    }
+
+    // Download Blob via FileSaver if available; else via object URL
+    async downloadBlob(blobPromiseOrBlob, filename) {
+        const blob = blobPromiseOrBlob instanceof Blob ? blobPromiseOrBlob : await blobPromiseOrBlob;
+        if (typeof window.saveAs === 'function') {
+            window.saveAs(blob, filename);
+        } else {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    }
+
+    // Helpers
+    toXlsxColRef(colIndex, rowIndex) {
+        // Convert 0-based colIndex to Excel letters (A, B, ..., AA, AB, ...)
+        let n = colIndex;
+        let s = '';
+        do {
+            const rem = n % 26;
+            s = String.fromCharCode(65 + rem) + s;
+            n = Math.floor(n / 26) - 1;
+        } while (n >= 0);
+        return `${s}${rowIndex}`;
+    }
+
+    escapeXml(s) {
+        return s
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;');
+    }
+
+    escapeCsv(value) {
+        // Guard against CSV injection and commas/newlines
+        const str = String(value ?? '');
+        const needsQuote = /[",\n\r]/.test(str) || /^[=+\-@]/.test(str);
+        const safe = str.replace(/"/g, '""');
+        return needsQuote ? `"${safe}` + `"` : safe;
     }
 
     generateReport() {
@@ -3740,6 +4187,9 @@ class TextParser {
             
             // Re-render table
             this.renderTable();
+            
+            // Mark analysis as dirty since data structure changed
+            this.markAnalysisDirty();
             
             this.updateProgress(progressModal, 'Complete!', 100);
             
