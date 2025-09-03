@@ -179,6 +179,11 @@ class TextParser {
         // fuzzyIntensity event listener removed - using optimal default
         if (pageSize) pageSize.addEventListener('change', this.changePageSize.bind(this));
         if (toggleColumns) toggleColumns.addEventListener('click', this.toggleColumnControls.bind(this));
+        
+        // Customer enrichment button
+        const enrichCustomerData = document.getElementById('enrichCustomerData');
+        if (enrichCustomerData) enrichCustomerData.addEventListener('click', this.showCustomerEnrichmentDialog.bind(this));
+        
         // analyzeData event listener removed - auto-analysis on data load
 
         // Export controls (simplified)
@@ -1882,6 +1887,7 @@ class TextParser {
         this.renderTableBody();
         this.renderPagination();
         this.renderColumnControls();
+        this.checkForCustomerEnrichmentOpportunity();
     }
 
     // Helper function to determine if a column should have filtering disabled
@@ -3274,6 +3280,567 @@ class TextParser {
                 messageDiv.remove();
             }
         }, 5000);
+    }
+
+    // Customer Data Enrichment Methods
+    checkForCustomerEnrichmentOpportunity() {
+        const enrichBtn = document.getElementById('enrichCustomerData');
+        if (!enrichBtn || !this.headers) return;
+
+        // Check if data has customer-related columns
+        const customerColumns = ['CIF', 'Customer Number', 'Customer_No', 'CUSTOMER_NO', 'Customer_Number', 'CIF_NUMBER'];
+        const hasCustomerColumn = this.headers.some(header => 
+            customerColumns.some(col => header.toLowerCase().includes(col.toLowerCase()))
+        );
+
+        enrichBtn.style.display = hasCustomerColumn ? 'inline-block' : 'none';
+    }
+
+    showCustomerEnrichmentDialog() {
+        // Create modal overlay
+        const modal = document.createElement('div');
+        modal.className = 'customer-enrichment-modal';
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.7); z-index: 10000; display: flex; 
+            align-items: center; justify-content: center;
+        `;
+
+        // Create modal content
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = `
+            background: white; padding: 30px; border-radius: 12px; 
+            max-width: 500px; width: 90%; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        `;
+
+        modalContent.innerHTML = `
+            <h3 style="margin: 0 0 20px 0; color: #333;">
+                <i class="material-icons" style="vertical-align: middle; margin-right: 8px; color: #4CAF50;">person_add</i>
+                Enrich Customer Data
+            </h3>
+            <p style="margin: 0 0 20px 0; color: #666; line-height: 1.5;">
+                Upload a CUSTOMER_CONTACT file to enrich your data with additional customer details like 
+                address, mobile number, PAN, DOB, and more.
+            </p>
+            
+            <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 15px; margin: 15px 0; font-size: 13px;">
+                <div style="color: #495057; margin-bottom: 8px; font-weight: 500;">
+                    <i class="material-icons" style="vertical-align: middle; margin-right: 5px; font-size: 16px; color: #6c757d;">info</i>
+                    Where to get CUSTOMER_CONTACT files:
+                </div>
+                <div style="color: #6c757d; font-family: monospace; font-size: 12px; line-height: 1.4;">
+                    http://10.1.9.65/ → Index of /ADHOC_REPORTS_NEW/Miscellaneous/<br>
+                    Customer_Profile/Your_ZO/Your_RO/CUSTOMER_CONTACT_YourBranchCode
+                </div>
+            </div>
+            
+            <div style="border: 2px dashed #ddd; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0; cursor: pointer;" id="customerFileDropZone">
+                <i class="material-icons" style="font-size: 48px; color: #ccc; margin-bottom: 10px;">cloud_upload</i>
+                <p style="margin: 0; color: #666;">Drop CUSTOMER_CONTACT file here or click to browse</p>
+                <p style="margin: 5px 0 0 0; font-size: 12px; color: #999;">
+                    Supports .csv and .gz files starting with "CUSTOMER_CONTACT"
+                </p>
+            </div>
+            
+            <input type="file" id="customerFileInput" style="display: none;" 
+                   accept=".csv,.gz" />
+            
+            <div style="text-align: right; margin-top: 20px;">
+                <button id="cancelEnrichment" style="
+                    padding: 10px 20px; 
+                    margin-right: 10px; 
+                    border: 1px solid #ddd; 
+                    background: #f8f9fa; 
+                    color: #495057;
+                    border-radius: 6px; 
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s ease;
+                " onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='#f8f9fa'">Cancel</button>
+                <button id="startEnrichment" style="
+                    padding: 10px 20px; 
+                    background: #4CAF50; 
+                    color: white; 
+                    border: none; 
+                    border-radius: 6px; 
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s ease;
+                    opacity: 0.5;
+                " disabled onmouseover="if(!this.disabled) this.style.background='#45a049'" onmouseout="if(!this.disabled) this.style.background='#4CAF50'">Start Enrichment</button>
+            </div>
+        `;
+
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+
+        // Set up event listeners
+        const dropZone = modal.querySelector('#customerFileDropZone');
+        const fileInput = modal.querySelector('#customerFileInput');
+        const cancelBtn = modal.querySelector('#cancelEnrichment');
+        const startBtn = modal.querySelector('#startEnrichment');
+
+        let selectedFile = null;
+
+        // File selection
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                this.handleCustomerFileSelection(e.target.files[0], dropZone, startBtn);
+                selectedFile = e.target.files[0];
+            }
+        });
+
+        // Drag and drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#4CAF50';
+            dropZone.style.backgroundColor = '#f8f8f8';
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.borderColor = '#ddd';
+            dropZone.style.backgroundColor = 'transparent';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#ddd';
+            dropZone.style.backgroundColor = 'transparent';
+            
+            if (e.dataTransfer.files.length > 0) {
+                this.handleCustomerFileSelection(e.dataTransfer.files[0], dropZone, startBtn);
+                selectedFile = e.dataTransfer.files[0];
+            }
+        });
+
+        // Button actions
+        cancelBtn.addEventListener('click', () => modal.remove());
+        startBtn.addEventListener('click', () => {
+            if (selectedFile) {
+                modal.remove();
+                this.processCustomerEnrichment(selectedFile);
+            }
+        });
+
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
+    }
+
+    handleCustomerFileSelection(file, dropZone, startBtn) {
+        const fileName = file.name.toLowerCase();
+        
+        // Validate file name and type
+        if (!fileName.startsWith('customer_contact')) {
+            this.showMessage('File name must start with "CUSTOMER_CONTACT"', 'error');
+            return;
+        }
+
+        if (!fileName.endsWith('.csv') && !fileName.endsWith('.gz')) {
+            this.showMessage('File must be a .csv or .gz file', 'error');
+            return;
+        }
+
+        // Update UI to show file selected
+        dropZone.innerHTML = `
+            <i class="material-icons" style="font-size: 48px; color: #4CAF50; margin-bottom: 10px;">check_circle</i>
+            <p style="margin: 0; color: #4CAF50; font-weight: bold;">${file.name}</p>
+            <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">
+                Size: ${(file.size / 1024 / 1024).toFixed(2)} MB
+            </p>
+        `;
+        dropZone.style.borderColor = '#4CAF50';
+        dropZone.style.backgroundColor = '#f8fff8';
+        
+        startBtn.disabled = false;
+        startBtn.style.opacity = '1';
+        startBtn.style.cursor = 'pointer';
+    }
+
+    async processCustomerEnrichment(file) {
+        try {
+            // Show progress modal
+            const progressModal = this.createProgressModal();
+            
+            this.updateProgress(progressModal, 'Reading customer file...', 10);
+            
+            // Read and extract file content
+            let csvContent;
+            if (file.name.toLowerCase().endsWith('.gz')) {
+                csvContent = await this.extractCustomerGzFile(file);
+            } else {
+                csvContent = await this.readFileAsText(file);
+            }
+            
+            this.updateProgress(progressModal, 'Parsing customer data...', 30);
+            
+            // Parse customer CSV
+            const customerData = this.parseCustomerCSV(csvContent);
+            console.log(`Loaded ${customerData.length} customer records`);
+            
+            // Debug: Log first few customer records to see structure
+            if (customerData.length > 0) {
+                console.log('Sample customer record:', customerData[0]);
+                console.log('Customer data keys:', Object.keys(customerData[0]));
+            }
+            
+            this.updateProgress(progressModal, 'Finding customer column...', 40);
+            
+            // Find customer number column in current data
+            const customerColumnIndex = this.findCustomerColumn();
+            if (customerColumnIndex === -1) {
+                throw new Error('No customer number column found in current data');
+            }
+            console.log(`Found customer column at index ${customerColumnIndex}: ${this.headers[customerColumnIndex]}`);
+            
+            this.updateProgress(progressModal, 'Creating customer lookup map...', 50);
+            
+            // Create efficient lookup map with multiple key variations
+            const customerMap = new Map();
+            let mapEntries = 0;
+            
+            customerData.forEach(customer => {
+                // Try multiple possible customer number field names
+                const possibleKeys = ['CUSTOMER_NO', 'Customer_No', 'CUSTOMER_NUMBER', 'Customer_Number', 'CIF', 'CIF_NUMBER'];
+                let customerNo = null;
+                
+                for (const key of possibleKeys) {
+                    if (customer[key]) {
+                        customerNo = customer[key].toString().trim();
+                        break;
+                    }
+                }
+                
+                if (customerNo) {
+                    customerMap.set(customerNo, customer);
+                    mapEntries++;
+                }
+            });
+            
+            console.log(`Created customer lookup map with ${mapEntries} entries`);
+            if (mapEntries === 0) {
+                throw new Error('No valid customer numbers found in CUSTOMER_CONTACT file');
+            }
+            
+            this.updateProgress(progressModal, 'Enriching data rows...', 60);
+            
+            // Insert new columns right after the customer column
+            const newColumns = ['CUSTOMER_TYPE', 'ADDRESS', 'MOBILE_NO', 'CUST_TAX_PAN', 'DOB', 'POSTCODE', 'GENDER', 'MOBILE_BANKING', 'FATHER_NAME', 'EMAIL'];
+            const insertIndex = customerColumnIndex + 1;
+            
+            // Insert new columns into headers
+            this.headers.splice(insertIndex, 0, ...newColumns);
+            
+            // Track successful matches for debugging
+            let successfulMatches = 0;
+            let totalProcessed = 0;
+            
+            console.log(`Before enrichment - Headers: ${this.headers.length}, Data columns: ${this.data[0]?.length || 0}`);
+            
+            // Safety check: If data columns already exceed expected, reset the structure
+            const expectedColumns = this.headers.length;
+            const actualColumns = this.data[0]?.length || 0;
+            
+            if (actualColumns > expectedColumns) {
+                console.warn(`Data structure appears corrupted (${actualColumns} columns vs ${expectedColumns} headers). Attempting to fix...`);
+                
+                // Truncate all rows to match header count
+                this.data.forEach(row => {
+                    if (row.length > expectedColumns) {
+                        row.splice(expectedColumns);
+                    }
+                });
+                
+                // Also fix filtered and original data
+                if (this.filteredData && this.filteredData !== this.data) {
+                    this.filteredData.forEach(row => {
+                        if (row.length > expectedColumns) {
+                            row.splice(expectedColumns);
+                        }
+                    });
+                }
+                
+                if (this.originalData && this.originalData !== this.data && this.originalData !== this.filteredData) {
+                    this.originalData.forEach(row => {
+                        if (row.length > expectedColumns) {
+                            row.splice(expectedColumns);
+                        }
+                    });
+                }
+                
+                console.log(`Structure fixed - Headers: ${this.headers.length}, Data columns: ${this.data[0]?.length || 0}`);
+            }
+            
+            // Check if filteredData and originalData are references to the same arrays
+            const isFilteredDataSameRef = this.filteredData === this.data;
+            const isOriginalDataSameRef = this.originalData === this.data;
+            const isFilteredOriginalSame = this.filteredData === this.originalData;
+            
+            console.log(`Array references - filteredData same as data: ${isFilteredDataSameRef}, originalData same as data: ${isOriginalDataSameRef}, filteredData same as originalData: ${isFilteredOriginalSame}`);
+            
+            // Only process this.data array to avoid any reference issues
+            console.log(`Processing only this.data array to avoid reference issues`);
+            
+            this.data.forEach(row => {
+                // Insert blank values for all new columns at the correct position
+                row.splice(insertIndex, 0, ...new Array(newColumns.length).fill(''));
+            });
+            
+            // Now recreate filteredData and originalData as independent copies
+            console.log('Creating fresh copies of filteredData and originalData');
+            this.filteredData = this.data.map(row => [...row]);
+            this.originalData = this.data.map(row => [...row]);
+            
+            console.log(`After column insertion - Headers: ${this.headers.length}, Data columns: ${this.data[0]?.length || 0}, FilteredData columns: ${this.filteredData[0]?.length || 0}, OriginalData columns: ${this.originalData[0]?.length || 0}`);
+            
+            // IMPORTANT: Update column filter indices after inserting new columns
+            // When we insert columns, existing filter indices become invalid
+            this.updateColumnFilterIndices(insertIndex, newColumns.length);
+            
+            // Now enrich data with batch processing for performance
+            // At this point, all rows already have blank columns inserted at correct positions
+            const batchSize = 1000;
+            let processedRows = 0;
+            
+            for (let i = 0; i < this.data.length; i += batchSize) {
+                const batch = this.data.slice(i, i + batchSize);
+                
+                batch.forEach((row, batchIndex) => {
+                    const actualRowIndex = i + batchIndex;
+                    totalProcessed++;
+                    
+                    // Get customer number from the row (at original position, before our insertions)
+                    const customerNo = row[customerColumnIndex]?.toString().trim();
+                    
+                    // Debug log for first few rows
+                    if (totalProcessed <= 5) {
+                        console.log(`Row ${totalProcessed}: Customer No = "${customerNo}"`);
+                    }
+                    
+                    const customerInfo = customerMap.get(customerNo);
+                    
+                    if (customerInfo) {
+                        successfulMatches++;
+                        
+                        // Debug log for first match
+                        if (successfulMatches === 1) {
+                            console.log('First match found:', customerInfo);
+                        }
+                        
+                        // Prepare customer data array with fallback field names
+                        const customerData = [
+                            customerInfo.CUSTOMER_TYPE || customerInfo.Customer_Type || '',
+                            customerInfo.ADDRESS || customerInfo.Address || '',
+                            customerInfo.MOBILE_NO || customerInfo.Mobile_No || customerInfo.MOBILE || '',
+                            customerInfo.CUST_TAX_PAN || customerInfo.Cust_Tax_Pan || customerInfo.PAN || '',
+                            customerInfo.DOB || customerInfo.Dob || customerInfo.DATE_OF_BIRTH || '',
+                            customerInfo.POSTCODE || customerInfo.Post_Code || customerInfo.PIN_CODE || '',
+                            customerInfo.GENDER || customerInfo.Gender || '',
+                            customerInfo.MOBILE_BANKING || customerInfo.Mobile_Banking || '',
+                            customerInfo.FATHER_NAME || customerInfo.Father_Name || customerInfo.FATHER || '',
+                            customerInfo.EMAIL || customerInfo.Email || customerInfo.EMAIL_ID || ''
+                        ];
+                        
+                        // Replace the blank values with actual customer data
+                        for (let j = 0; j < newColumns.length; j++) {
+                            const value = customerData[j];
+                            row[insertIndex + j] = value;
+                            // Update corresponding positions in the independent copies
+                            this.filteredData[actualRowIndex][insertIndex + j] = value;
+                            this.originalData[actualRowIndex][insertIndex + j] = value;
+                        }
+                    }
+                    // If no match found, the blank values remain (which is what we want)
+                });
+                
+                processedRows += batch.length;
+                const progress = 60 + (processedRows / this.data.length) * 30;
+                this.updateProgress(progressModal, `Enriched ${processedRows}/${this.data.length} rows...`, progress);
+                
+                // Allow UI to update
+                await new Promise(resolve => setTimeout(resolve, 1));
+            }
+            
+            console.log(`Enrichment complete: ${successfulMatches}/${totalProcessed} rows matched with customer data`);
+            
+            // Comprehensive validation of all data arrays
+            const headerCount = this.headers.length;
+            const dataColumns = this.data[0]?.length || 0;
+            const filteredColumns = this.filteredData[0]?.length || 0;
+            const originalColumns = this.originalData[0]?.length || 0;
+            
+            console.log(`Final validation - Headers: ${headerCount}, Data: ${dataColumns}, Filtered: ${filteredColumns}, Original: ${originalColumns}`);
+            
+            // Check all arrays for consistency
+            if (headerCount !== dataColumns || headerCount !== filteredColumns || headerCount !== originalColumns) {
+                console.error(`Data structure mismatch! Headers: ${headerCount}, Data: ${dataColumns}, Filtered: ${filteredColumns}, Original: ${originalColumns}`);
+                
+                // Try to fix by ensuring all arrays have the same structure
+                const targetLength = headerCount;
+                
+                [this.data, this.filteredData, this.originalData].forEach((dataArray, arrayIndex) => {
+                    const arrayName = ['data', 'filteredData', 'originalData'][arrayIndex];
+                    console.log(`Fixing ${arrayName} array...`);
+                    
+                    dataArray.forEach(row => {
+                        if (row.length > targetLength) {
+                            row.splice(targetLength); // Remove excess columns
+                        } else if (row.length < targetLength) {
+                            while (row.length < targetLength) {
+                                row.push(''); // Add missing columns
+                            }
+                        }
+                    });
+                });
+                
+                console.log(`Structure fixed - all arrays now have ${targetLength} columns`);
+            }
+            
+            this.updateProgress(progressModal, 'Updating table...', 95);
+            
+            // No need to update filteredData and originalData here as they're already updated above
+            
+            // Re-render table
+            this.renderTable();
+            
+            this.updateProgress(progressModal, 'Complete!', 100);
+            
+            setTimeout(() => {
+                progressModal.remove();
+                this.showSuccessMessage(`Customer data enrichment complete! Added ${newColumns.length} new columns to ${this.data.length} rows. Successfully matched ${successfulMatches} customers.`);
+            }, 1000);
+            
+        } catch (error) {
+            console.error('Customer enrichment error:', error);
+            const progressModal = document.querySelector('.progress-modal');
+            if (progressModal) progressModal.remove();
+            this.showErrorMessage('Customer enrichment failed: ' + error.message);
+        }
+    }
+
+    createProgressModal() {
+        const modal = document.createElement('div');
+        modal.className = 'progress-modal';
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.8); z-index: 10001; display: flex; 
+            align-items: center; justify-content: center;
+        `;
+
+        modal.innerHTML = `
+            <div style="background: white; padding: 30px; border-radius: 12px; max-width: 400px; width: 90%; text-align: center;">
+                <div style="margin-bottom: 20px;">
+                    <i class="material-icons" style="font-size: 48px; color: #4CAF50; animation: spin 2s linear infinite;">sync</i>
+                </div>
+                <h3 style="margin: 0 0 20px 0; color: #333;">Enriching Customer Data</h3>
+                <div style="background: #f0f0f0; border-radius: 10px; height: 20px; margin: 20px 0; overflow: hidden;">
+                    <div id="progressBar" style="background: #4CAF50; height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+                </div>
+                <p id="progressText" style="margin: 0; color: #666;">Starting...</p>
+            </div>
+            <style>
+                @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            </style>
+        `;
+
+        document.body.appendChild(modal);
+        return modal;
+    }
+
+    updateProgress(modal, text, percentage) {
+        const progressBar = modal.querySelector('#progressBar');
+        const progressText = modal.querySelector('#progressText');
+        
+        if (progressBar) progressBar.style.width = percentage + '%';
+        if (progressText) progressText.textContent = text;
+    }
+
+    async extractCustomerGzFile(file) {
+        // Use the existing gzip extraction logic
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        const decompressed = pako.inflate(uint8Array);
+        return new TextDecoder('utf-8').decode(decompressed);
+    }
+
+    readFileAsText(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsText(file);
+        });
+    }
+
+    parseCustomerCSV(csvContent) {
+        const lines = csvContent.split('\n').map(line => line.trim()).filter(line => line);
+        if (lines.length < 2) throw new Error('Invalid CSV file');
+        
+        // Auto-detect delimiter (comma or tab)
+        const firstLine = lines[0];
+        const delimiter = firstLine.includes('\t') ? '\t' : ',';
+        console.log(`Detected CSV delimiter: "${delimiter}"`);
+        
+        const headers = firstLine.split(delimiter).map(h => h.trim().replace(/['"]/g, ''));
+        console.log('CSV Headers:', headers);
+        
+        const data = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(delimiter).map(v => v.trim().replace(/['"]/g, ''));
+            if (values.length >= headers.length) {
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header] = values[index] || '';
+                });
+                data.push(row);
+            }
+        }
+        
+        console.log(`Parsed ${data.length} customer records from CSV`);
+        return data;
+    }
+
+    findCustomerColumn() {
+        const customerColumns = ['CIF', 'Customer Number', 'Customer_No', 'CUSTOMER_NO', 'Customer_Number', 'CIF_NUMBER'];
+        
+        for (let i = 0; i < this.headers.length; i++) {
+            const header = this.headers[i];
+            if (customerColumns.some(col => header.toLowerCase().includes(col.toLowerCase()))) {
+                return i;
+            }
+        }
+        
+        return -1;
+    }
+
+    updateColumnFilterIndices(insertIndex, numColumnsInserted) {
+        // When columns are inserted, we need to adjust all column filter indices
+        // that come after the insertion point
+        console.log(`Updating column filter indices - Insert at: ${insertIndex}, Columns added: ${numColumnsInserted}`);
+        console.log('Before update:', Object.keys(this.columnFilters));
+        
+        const updatedFilters = {};
+        
+        Object.keys(this.columnFilters).forEach(oldIndex => {
+            const oldIndexNum = parseInt(oldIndex);
+            let newIndex = oldIndexNum;
+            
+            // If the old index is at or after the insertion point, shift it by the number of inserted columns
+            if (oldIndexNum >= insertIndex) {
+                newIndex = oldIndexNum + numColumnsInserted;
+            }
+            
+            updatedFilters[newIndex] = this.columnFilters[oldIndex];
+            console.log(`Filter moved from column ${oldIndex} to column ${newIndex}`);
+        });
+        
+        this.columnFilters = updatedFilters;
+        console.log('After update:', Object.keys(this.columnFilters));
     }
 
 }
