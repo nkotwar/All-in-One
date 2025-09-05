@@ -751,8 +751,17 @@ class TemplateEditor {
                 // Create a fresh copy of the template for this row
                 const templateCopy = await DocxReplace.load(await this.templateDoc.generate());
                 
-                // Use the enhanced replaceAll method which handles all bracket styles
-                templateCopy.replaceAll(rowData);
+                // Use enhanced replaceAll; on failure, fall back to placeholder-only replacement
+                try {
+                    templateCopy.replaceAll(rowData);
+                } catch (e) {
+                    console.warn('replaceAll failed, falling back to replacePlaceholders:', e);
+                    if (typeof templateCopy.replacePlaceholders === 'function') {
+                        templateCopy.replacePlaceholders(rowData);
+                    } else {
+                        throw e;
+                    }
+                }
                 
                 // Generate the processed document
                 const processedDoc = await templateCopy.generate();
@@ -786,6 +795,15 @@ class TemplateEditor {
                 throw new Error('Invalid document structure - no body found');
             }
             
+            // Helper to find the current section properties (must remain last in body)
+            const findSectPr = () => {
+                const children = Array.from(body.children);
+                for (let i = children.length - 1; i >= 0; i--) {
+                    if (children[i].tagName === 'w:sectPr') return children[i];
+                }
+                return null;
+            };
+            
             // Add content from additional documents
             for (let i = 1; i < processedDocuments.length; i++) {
                 const docZip = await JSZip.loadAsync(processedDocuments[i]);
@@ -794,13 +812,20 @@ class TemplateEditor {
                 const docBody = docParsed.getElementsByTagName('w:body')[0];
                 
                 if (docBody) {
-                    // Add page break before this section
+                    // Always insert before sectPr to keep it as the last child
+                    const sectPr = findSectPr();
                     this.addPageBreakToXML(body);
                     
                     // Add all content from this document's body
                     Array.from(docBody.children).forEach(element => {
                         if (element.tagName !== 'w:sectPr') { // Skip section properties
-                            body.appendChild(xmlDoc.importNode(element, true));
+                            const imported = xmlDoc.importNode(element, true);
+                            const currentSectPr = findSectPr();
+                            if (currentSectPr) {
+                                body.insertBefore(imported, currentSectPr);
+                            } else {
+                                body.appendChild(imported);
+                            }
                         }
                     });
                 }
@@ -826,14 +851,25 @@ class TemplateEditor {
 
     addPageBreakToXML(body) {
         // Create page break paragraph
-        const pageBreakPara = body.ownerDocument.createElement('w:p');
-        const pageBreakRun = body.ownerDocument.createElement('w:r');
-        const pageBreakElement = body.ownerDocument.createElement('w:br');
+        const doc = body.ownerDocument;
+        const pageBreakPara = doc.createElement('w:p');
+        const pageBreakRun = doc.createElement('w:r');
+        const pageBreakElement = doc.createElement('w:br');
         pageBreakElement.setAttribute('w:type', 'page');
-        
         pageBreakRun.appendChild(pageBreakElement);
         pageBreakPara.appendChild(pageBreakRun);
-        body.appendChild(pageBreakPara);
+
+        // Insert before sectPr if present, else append
+        let sectPr = null;
+        const children = Array.from(body.children);
+        for (let i = children.length - 1; i >= 0; i--) {
+            if (children[i].tagName === 'w:sectPr') { sectPr = children[i]; break; }
+        }
+        if (sectPr) {
+            body.insertBefore(pageBreakPara, sectPr);
+        } else {
+            body.appendChild(pageBreakPara);
+        }
     }
 
     saveTemplate() {

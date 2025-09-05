@@ -175,16 +175,28 @@
                                     const newRun = xmlDoc.createElement('w:r');
                                     newRun.appendChild(newText);
                                     
-                                    // Replace everything between bookmarkStart and bookmarkEnd
-                                    let currentNode = bmStart.nextSibling;
-                                    while (currentNode && currentNode !== bmEnd) {
-                                        const nextNode = currentNode.nextSibling;
-                                        currentNode.parentNode.removeChild(currentNode);
-                                        currentNode = nextNode;
+                                    // Replace everything between bookmarkStart and bookmarkEnd when they share the same parent
+                                    if (bmStart.parentNode === bmEnd.parentNode) {
+                                        let currentNode = bmStart.nextSibling;
+                                        while (currentNode && currentNode !== bmEnd) {
+                                            const nextNode = currentNode.nextSibling;
+                                            if (currentNode.parentNode) {
+                                                currentNode.parentNode.removeChild(currentNode);
+                                            }
+                                            currentNode = nextNode;
+                                        }
+                                        // Insert new content before bmEnd under the shared parent
+                                        bmEnd.parentNode.insertBefore(newRun, bmEnd);
+                                    } else {
+                                        // Different parents: avoid DOMException by inserting under bmEnd's parent
+                                        // Note: We don't remove content across parents to avoid breaking structure
+                                        if (bmEnd.parentNode) {
+                                            bmEnd.parentNode.insertBefore(newRun, bmEnd);
+                                        } else if (bmStart.parentNode) {
+                                            // Fallback: insert after bmStart if bmEnd has no parent (shouldn't happen)
+                                            bmStart.parentNode.insertBefore(newRun, bmStart.nextSibling);
+                                        }
                                     }
-                                    
-                                    // Insert our new content
-                                    bmStart.parentNode.insertBefore(newRun, bmEnd);
                                 }
                             }
                         }
