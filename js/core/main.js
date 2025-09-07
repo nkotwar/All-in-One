@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     const menu = document.getElementById('menu');
     const hamburgerToggle = document.getElementById('hamburgerToggle');
-    const hamburger = document.querySelector('.hamburger');
     const menuInner = document.querySelector('.menu-inner');
     const menuInnerUl = document.getElementById('menu-inner-ul');
     const contents = document.querySelectorAll('.content');
@@ -24,24 +23,15 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.classList.toggle('sidebar-active');
     });
 
-    // Toggle menu on hamburger click
-    hamburger.addEventListener('click', function (event) {
+    // Toggle menu on hamburger toggle button click
+    hamburgerToggle.addEventListener('click', function (event) {
         event.stopPropagation();
-        menu.classList.toggle('expanded');
-    });
-
-    // Add touch event listener for hamburger menu
-    hamburger.addEventListener('touchstart', function (event) {
-        event.stopPropagation();
-        menu.classList.toggle('expanded');
-    });
-
-    hamburgerToggle.addEventListener('click', function () {
         menu.classList.toggle('expanded');
     });
 
     hamburgerToggle.addEventListener('touchstart', function (event) {
         event.preventDefault(); // Prevent default touch behavior
+        event.stopPropagation();
         menu.classList.toggle('expanded');
     });
 
@@ -177,11 +167,6 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener("mousemove", (e) => {
         x = e.pageX;
         y = e.pageY;
-    });
-
-    hamburger.addEventListener("mouseenter", () => {
-        document.getElementById("menu").classList.add("expanded");
-        menuExpanded = true;
     });
 
     menuInner.addEventListener("mouseenter", () => {

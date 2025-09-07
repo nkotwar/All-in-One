@@ -1,13 +1,15 @@
-/* Material Icons - Local version */
+/* Material Icons - Local version with fallbacks */
 @font-face {
   font-family: 'Material Icons';
   font-style: normal;
   font-weight: 400;
-  src: url('./MaterialIcons-Regular.ttf') format('truetype');
+  font-display: swap; /* Improves loading performance */
+  src: url('./MaterialIcons-Regular.ttf') format('truetype'),
+       url('./webfonts/MaterialIcons-Regular.ttf') format('truetype');
 }
 
 .material-icons {
-  font-family: 'Material Icons';
+  font-family: 'Material Icons', 'Material Icons Outlined', sans-serif;
   font-weight: normal;
   font-style: normal;
   font-size: 24px;
@@ -21,4 +23,11 @@
   -webkit-font-feature-settings: 'liga';
   font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Fallback for when Material Icons don't load */
+.material-icons:before {
+  content: attr(data-fallback);
 }

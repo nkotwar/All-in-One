@@ -44,6 +44,25 @@
 
 #menu-inner-ul li i {
   padding-right: 10px;
+  min-width: 24px; /* Ensure consistent spacing */
+  text-align: center;
+}
+
+/* Hide icon text content when Material Icons are loaded properly */
+.material-icons {
+  font-size: 20px !important; /* Slightly smaller for better mobile display */
+  vertical-align: middle;
+}
+
+/* Responsive text sizing for mobile */
+@media (max-width: 768px) {
+  #menu-inner-ul li {
+    font-size: 16px; /* Slightly smaller on mobile */
+  }
+  
+  .material-icons {
+    font-size: 18px !important;
+  }
 }
 
 #menu-inner-ul li:hover {
@@ -55,30 +74,6 @@
 #menu-inner-ul li.active {
   background-color: rgba(255, 255, 255, 0.2);
   font-weight: 600;
-}
-
-.hamburger {
-  right: 20px;
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  margin-top: -10px;
-}
-
-.hamburger .line {
-  width: 100%;
-  height: 4px;
-  background-color: #C3BBA600;
-  position: absolute;
-}
-
-.hamburger .line:nth-child(2) {
-  top: 50%;
-  margin-top: -2px;
-}
-
-.hamburger .line:nth-child(3) {
-  bottom: 0;
 }
 
 .hamburger-toggle {
@@ -96,6 +91,7 @@
   z-index: 1001;
   box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
   transition: background 0.3s;
+  display: none; /* Hidden by default, shown on mobile */
 }
 
 .signature {
@@ -159,18 +155,29 @@
     right: 0;
     width: 340px;
     height: calc(100% - 60px); /* Adjust based on your header's height */
-    background-color: #fff;
+    background-color: #ffffff;
     border-left: 1px solid #e9ecef;
-    box-shadow: -3px 0 15px rgba(0, 0, 0, 0.05);
+    box-shadow: -3px 0 15px rgba(0, 0, 0, 0.1);
     transform: translateX(100%); /* Start off-screen */
     transition: transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1);
     z-index: 999;
     display: flex;
     flex-direction: column;
+    color: #333;
 }
 
 #pdfSidebar.active {
     transform: translateX(0); /* Slide in */
+}
+
+#pdfSidebar h3 {
+    color: #333;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 15px 0 10px 0;
+    padding: 0 20px;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
 }
 
 /* Main container adjustments when sidebar is active */

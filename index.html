@@ -7,6 +7,8 @@
 
     <!-- CSS Imports -->
     <link rel="stylesheet" href="css/all.min.css" />
+    <!-- Google Material Icons CDN as fallback -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <!-- Local Material Icons -->
     <link rel="stylesheet" href="fonts/material-icons.css" />
     <link rel="stylesheet" href="css/cropper.min.css" />
@@ -49,6 +51,7 @@
     <!-- Modern Core JavaScript -->
     <script src="js/core/errorHandler.js" defer></script>
     <script src="js/core/toastSystem.js" defer></script>
+    <script src="js/core/iconFallback.js" defer></script>
     
     <!-- Legacy JavaScript Libraries -->
     <script src="js/libs/interact.min.js" defer></script>
@@ -115,11 +118,6 @@
   </head>
   <body>
     <div id="menu">
-      <div class="hamburger">
-        <div class="line"></div>
-        <div class="line"></div>
-        <div class="line"></div>
-      </div>
       <div class="menu-inner">
         <button id="hamburgerToggle" class="hamburger-toggle">
           <i class="material-icons">menu</i>

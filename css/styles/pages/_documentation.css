@@ -48,15 +48,28 @@
 
 #allPdfsList div {
   margin-bottom: 10px;
-  padding: 10px;
-  background: #e3f2fd;
+  padding: 12px;
+  background: #ffffff;
+  color: #333333;
+  border: 1px solid #dee2e6;
   border-radius: var(--border-radius);
   cursor: pointer;
-  transition: background 0.3s;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  line-height: 1.4;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 #allPdfsList div:hover {
-  background: #bbdefb;
+  background: #f8f9fa;
+  border-color: #007bff;
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+#allPdfsList div:active {
+  background: #e3f2fd;
+  transform: translateY(0);
 }
 
 .sidebar-toggle {
@@ -278,5 +291,53 @@
 @media (max-width: 1200px) {
   #formContainer {
     column-count: 1;
+  }
+}
+
+/* Mobile responsiveness for PDF sidebar */
+@media (max-width: 768px) {
+  #pdfSidebar {
+    width: 100%;
+    max-width: 350px;
+    right: -100%;
+    top: 0;
+    height: 100vh;
+    z-index: 1500;
+  }
+  
+  #pdfSidebar.active {
+    right: 0;
+  }
+  
+  #allPdfsList {
+    padding: 10px;
+    max-height: calc(100vh - 200px);
+  }
+  
+  #allPdfsList div {
+    padding: 16px;
+    font-size: 16px;
+    line-height: 1.5;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    text-align: left;
+    word-break: break-word;
+  }
+  
+  #allPdfsList h3 {
+    font-size: 18px;
+    padding: 15px;
+    margin: 10px 0;
+    color: #333;
+    border-bottom: 2px solid #007bff;
+  }
+  
+  .sidebar-toggle {
+    left: -50px;
+    padding: 12px;
+    font-size: 18px;
+    min-width: 44px;
+    min-height: 44px;
   }
 }
