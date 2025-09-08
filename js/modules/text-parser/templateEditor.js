@@ -411,10 +411,16 @@ class TemplateEditor {
     }
 
     autoMapColumns() {
-        const headers = this.textParser.headers || [];
+        // Use visible headers instead of all headers to respect column management
+        const visibleHeadersWithIndices = this.textParser.getVisibleHeadersWithIndices ? 
+            this.textParser.getVisibleHeadersWithIndices() : 
+            (this.textParser.headers || []).map((header, index) => ({ header, index }));
+        
+        const headers = visibleHeadersWithIndices.map(({ header }) => header);
+        const headerIndices = visibleHeadersWithIndices.map(({ index }) => index);
         
         if (headers.length === 0) {
-            this.showMessage('No data columns available for auto-mapping', 'warning');
+            this.showMessage('No visible data columns available for auto-mapping. Please check column management settings.', 'warning');
             return;
         }
 
@@ -423,10 +429,6 @@ class TemplateEditor {
             return;
         }
 
-        console.log('🤖 Starting Enhanced Auto-Mapping:');
-        console.log('Placeholders:', this.allPlaceholders);
-        console.log('Headers:', headers);
-        
         // Clear existing mappings
         this.clearAllMappings();
         
@@ -443,7 +445,9 @@ class TemplateEditor {
                 );
                 
                 if (placeholderElement) {
-                    this.mapColumnToPlaceholder(headers[bestMatch.index], bestMatch.index, placeholder, placeholderElement);
+                    // Use the original header index from the full headers array
+                    const originalIndex = headerIndices[bestMatch.index];
+                    this.mapColumnToPlaceholder(headers[bestMatch.index], originalIndex, placeholder, placeholderElement);
                     mappedCount++;
                     
                     if (bestMatch.confidence < 0.7) {
@@ -454,12 +458,9 @@ class TemplateEditor {
                         });
                     }
                     
-                    console.log(`✅ Auto-mapped: "${placeholder}" → "${headers[bestMatch.index]}" (confidence: ${bestMatch.confidence.toFixed(2)})`);
                 } else {
-                    console.warn(`⚠️ Placeholder element not found for: ${placeholder}`);
+                    // No suitable column match found
                 }
-            } else {
-                console.log(`❌ No match found for: "${placeholder}"`);
             }
         });
         
@@ -470,7 +471,6 @@ class TemplateEditor {
         if (lowConfidenceMappings.length > 0) {
             message += ` ${lowConfidenceMappings.length} mappings have low confidence - please review them.`;
             messageType = 'warning';
-            console.warn('⚠️ Low confidence mappings:', lowConfidenceMappings);
         }
         
         if (mappedCount === 0) {
@@ -746,7 +746,6 @@ class TemplateEditor {
             
             for (let i = 0; i < mappedData.length; i++) {
                 const rowData = mappedData[i];
-                console.log(`📝 Processing row ${i + 1}/${mappedData.length}:`, rowData);
                 
                 // Create a fresh copy of the template for this row
                 const templateCopy = await DocxReplace.load(await this.templateDoc.generate());

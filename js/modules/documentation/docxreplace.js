@@ -2,7 +2,7 @@
 // Extend existing DocxReplace with additional methods
 (function() {
     if (typeof DocxReplace === 'undefined') {
-        console.warn('DocxReplace base library not found. Enhanced features will not be available.');
+        
         return;
     }
 
@@ -25,7 +25,8 @@
                 const xmlDoc = parser.parseFromString(documentXml, 'text/xml');
                 const bookmarks = Array.from(xmlDoc.getElementsByTagName('w:bookmarkStart'))
                     .map(bm => bm.getAttribute('w:name'))
-                    .filter((value, index, self) => self.indexOf(value) === index); // Unique values
+                    .filter((value, index, self) => self.indexOf(value) === index) // Unique values
+                    .filter(name => !this.isSystemBookmark(name)); // Filter out system bookmarks
                 return bookmarks;
             },
             
@@ -34,33 +35,41 @@
                 const parser = new DOMParser();
                 const xmlDoc = parser.parseFromString(documentXml, 'text/xml');
                 
-                // Get bookmarks
+                // Get bookmarks (excluding system bookmarks)
                 const bookmarks = Array.from(xmlDoc.getElementsByTagName('w:bookmarkStart'))
                     .map(bm => bm.getAttribute('w:name'))
-                    .filter((value, index, self) => self.indexOf(value) === index);
+                    .filter((value, index, self) => self.indexOf(value) === index)
+                    .filter(name => !this.isSystemBookmark(name)); // Filter out system bookmarks
                 
                 // Enhanced placeholder patterns - supports multiple bracket styles
                 const placeholderPatterns = [
-                    { pattern: /\{\{([^}]+)\}\}/g, name: 'double-curly' },      // {{variable}}
-                    { pattern: /<<([^>]+)>>/g, name: 'double-angle' },          // <<variable>>
-                    { pattern: /<([^<>]+)>/g, name: 'single-angle' },           // <variable>
-                    { pattern: /\{([^{}]+)\}/g, name: 'single-curly' },         // {variable}
-                    { pattern: /\[([^\[\]]+)\]/g, name: 'single-square' },      // [variable]
-                    { pattern: /\[\[([^\[\]]+)\]\]/g, name: 'double-square' },  // [[variable]]
-                    { pattern: /\(\(([^)]+)\)\)/g, name: 'double-paren' },      // ((variable))
-                    { pattern: /\$\{([^}]+)\}/g, name: 'dollar-curly' },        // ${variable}
-                    { pattern: /#\{([^}]+)\}/g, name: 'hash-curly' },           // #{variable}
-                    { pattern: /%([^%\s]+)%/g, name: 'percent' },               // %variable%
-                    { pattern: /\|([^|\s]+)\|/g, name: 'pipe' },                // |variable|
-                    { pattern: /~([^~\s]+)~/g, name: 'tilde' }                  // ~variable~
+                    { pattern: /\{\{([^}]+)\}\}/gi, name: 'double-curly' },      // {{variable}}
+                    { pattern: /<<([^>]+)>>/gi, name: 'double-angle' },          // <<variable>>
+                    { pattern: /<([^<>]+)>/gi, name: 'single-angle' },           // <variable>
+                    { pattern: /\{([^{}]+)\}/gi, name: 'single-curly' },         // {variable}
+                    { pattern: /\[([^\[\]]+)\]/gi, name: 'single-square' },      // [variable]
+                    { pattern: /\[\[([^\[\]]+)\]\]/gi, name: 'double-square' },  // [[variable]]
+                    { pattern: /\(\(([^)]+)\)\)/gi, name: 'double-paren' },      // ((variable))
+                    { pattern: /\$\{([^}]+)\}/gi, name: 'dollar-curly' },        // ${variable}
+                    { pattern: /#\{([^}]+)\}/gi, name: 'hash-curly' },           // #{variable}
+                    { pattern: /%([^%\s]+)%/gi, name: 'percent' },               // %variable%
+                    { pattern: /\|([^|\s]+)\|/gi, name: 'pipe' },                // |variable|
+                    { pattern: /~([^~\s]+)~/gi, name: 'tilde' }                  // ~variable~
                 ];
                 
                 const textElements = xmlDoc.getElementsByTagName('w:t');
                 const placeholders = new Set();
                 const placeholderInfo = new Map(); // Store pattern info for each placeholder
                 
+
+                
+                // Method 1: Check individual elements (for simple cases)
                 for (let i = 0; i < textElements.length; i++) {
                     const textContent = textElements[i].textContent;
+                    
+                    if (textContent.includes('{') || textContent.includes('[') || textContent.includes('<')) {
+                        // Debug: examining text element
+                    }
                     
                     // Test each pattern
                     placeholderPatterns.forEach(({ pattern, name }) => {
@@ -71,13 +80,17 @@
                         while ((match = pattern.exec(textContent)) !== null) {
                             const placeholder = match[1].trim();
                             
-                            // Skip empty placeholders or very short ones
-                            if (placeholder.length === 0 || placeholder.length < 2) {
+                            
+                            
+                            // Skip empty placeholders
+                            if (placeholder.length === 0) {
+                                
                                 continue;
                             }
                             
                             // Skip if it looks like HTML/XML tags for single angle brackets
                             if (name === 'single-angle' && this.isLikelyHTMLTag(placeholder)) {
+                                
                                 continue;
                             }
                             
@@ -87,12 +100,60 @@
                                 placeholderInfo.set(placeholder, {
                                     pattern: name,
                                     fullMatch: match[0],
-                                    source: 'text-pattern'
+                                    source: 'individual-element',
+                                    elementIndex: i
                                 });
+                                
+                                
+                            } else {
+                                
                             }
                         }
                     });
                 }
+                
+                // Method 2: Combine all text and check for split placeholders
+                
+                let allTextContent = '';
+                for (let i = 0; i < textElements.length; i++) {
+                    allTextContent += textElements[i].textContent;
+                }
+                
+                
+                
+                
+                // Check combined text for placeholders that might have been split
+                placeholderPatterns.forEach(({ pattern, name }) => {
+                    pattern.lastIndex = 0;
+                    let match;
+                    
+                    while ((match = pattern.exec(allTextContent)) !== null) {
+                        const placeholder = match[1].trim();
+                        
+                        // Only process if not already found in individual elements
+                        if (!placeholders.has(placeholder)) {
+                            
+                            
+                            if (placeholder.length > 0 && 
+                                (name !== 'single-angle' || !this.isLikelyHTMLTag(placeholder)) &&
+                                this.isValidPlaceholderName(placeholder)) {
+                                
+                                placeholders.add(placeholder);
+                                placeholderInfo.set(placeholder, {
+                                    pattern: name,
+                                    fullMatch: match[0],
+                                    source: 'combined-text'
+                                });
+                                
+                                
+                            }
+                        } else {
+                            
+                        }
+                    }
+                });
+                
+                
                 
                 return {
                     bookmarks: bookmarks,
@@ -103,20 +164,70 @@
             
             // Helper function to check if placeholder name is valid
             isValidPlaceholderName: function(name) {
-                // Allow letters, numbers, underscores, hyphens, dots, spaces
-                const validPattern = /^[a-zA-Z0-9_\-.\s]+$/;
+                // Allow letters, numbers, underscores, hyphens, dots, spaces, and Unicode characters (for Hindi/other languages)
+                const validPattern = /^[\w\-.\s\u0900-\u097F\u0080-\u024F\u1E00-\u1EFF]+$/u;
                 
                 // Reject if it contains only numbers or special chars
-                const hasLetter = /[a-zA-Z]/.test(name);
+                const hasLetter = /[\p{L}]/u.test(name);
                 
                 // Reject common false positives
                 const falsePositives = ['div', 'span', 'br', 'hr', 'img', 'a', 'p', 'h1', 'h2', 'h3', 'table', 'tr', 'td'];
                 
+                // More lenient validation for placeholder names
                 return validPattern.test(name) && 
                        hasLetter && 
-                       name.length >= 2 && 
-                       name.length <= 50 &&
-                       !falsePositives.includes(name.toLowerCase());
+                       name.length >= 1 && 
+                       name.length <= 100 &&
+                       !falsePositives.includes(name.toLowerCase().trim());
+            },
+            
+            // Helper function to identify system-generated bookmarks that should be filtered out
+            isSystemBookmark: function(bookmarkName) {
+                if (!bookmarkName) return true;
+                
+                // Common system bookmarks that Word generates automatically
+                const systemBookmarks = [
+                    '_GoBack',           // Auto-generated by Word when cursor moves
+                    '_Toc',              // Table of contents bookmarks (starts with _Toc)
+                    '_Ref',              // Reference bookmarks (starts with _Ref)
+                    '_Hlk',              // Hyperlink bookmarks (starts with _Hlk)
+                    'OLE_LINK',          // OLE object links (starts with OLE_LINK)
+                    '_top',              // Document top bookmark
+                    '_bottom',           // Document bottom bookmark
+                    'BM_',               // Some system bookmarks start with BM_
+                    'RANGE',             // Range bookmarks
+                    'CITATION',          // Citation bookmarks
+                    'BIBLIOGRAPHY'       // Bibliography bookmarks
+                ];
+                
+                const name = bookmarkName.toString().trim();
+                
+                // Check for exact matches
+                if (systemBookmarks.includes(name)) {
+                    
+                    return true;
+                }
+                
+                // Check for prefix matches (bookmarks starting with system prefixes)
+                const systemPrefixes = ['_Toc', '_Ref', '_Hlk', 'OLE_LINK', 'BM_'];
+                if (systemPrefixes.some(prefix => name.startsWith(prefix))) {
+                    
+                    return true;
+                }
+                
+                // Check for bookmarks that are likely auto-generated (contain only numbers after underscore)
+                if (name.startsWith('_') && /^_[0-9]+$/.test(name)) {
+                    
+                    return true;
+                }
+                
+                // Check for empty or very short names that are likely system-generated
+                if (name.length === 0 || (name.length <= 2 && name.startsWith('_'))) {
+                    
+                    return true;
+                }
+                
+                return false;
             },
             
             // Helper function to detect likely HTML tags
@@ -207,69 +318,297 @@
                 documentXml = serializer.serializeToString(xmlDoc);
             },
             
-            // Enhanced method to replace multiple bracket style placeholders
+            // Enhanced method to replace multiple bracket style placeholders while preserving formatting
             replacePlaceholders: function(replacements) {
                 const parser = new DOMParser();
                 const serializer = new XMLSerializer();
                 const xmlDoc = parser.parseFromString(documentXml, 'text/xml');
                 
-                // Define all supported placeholder patterns for replacement
-                const placeholderPatterns = [
-                    { pattern: (name) => new RegExp(`\\{\\{\\s*${this.escapeRegex(name)}\\s*\\}\\}`, 'g'), name: 'double-curly' },
-                    { pattern: (name) => new RegExp(`<<\\s*${this.escapeRegex(name)}\\s*>>`, 'g'), name: 'double-angle' },
-                    { pattern: (name) => new RegExp(`<\\s*${this.escapeRegex(name)}\\s*>`, 'g'), name: 'single-angle' },
-                    { pattern: (name) => new RegExp(`\\{\\s*${this.escapeRegex(name)}\\s*\\}`, 'g'), name: 'single-curly' },
-                    { pattern: (name) => new RegExp(`\\[\\s*${this.escapeRegex(name)}\\s*\\]`, 'g'), name: 'single-square' },
-                    { pattern: (name) => new RegExp(`\\[\\[\\s*${this.escapeRegex(name)}\\s*\\]\\]`, 'g'), name: 'double-square' },
-                    { pattern: (name) => new RegExp(`\\(\\(\\s*${this.escapeRegex(name)}\\s*\\)\\)`, 'g'), name: 'double-paren' },
-                    { pattern: (name) => new RegExp(`\\$\\{\\s*${this.escapeRegex(name)}\\s*\\}`, 'g'), name: 'dollar-curly' },
-                    { pattern: (name) => new RegExp(`#\\{\\s*${this.escapeRegex(name)}\\s*\\}`, 'g'), name: 'hash-curly' },
-                    { pattern: (name) => new RegExp(`%\\s*${this.escapeRegex(name)}\\s*%`, 'g'), name: 'percent' },
-                    { pattern: (name) => new RegExp(`\\|\\s*${this.escapeRegex(name)}\\s*\\|`, 'g'), name: 'pipe' },
-                    { pattern: (name) => new RegExp(`~\\s*${this.escapeRegex(name)}\\s*~`, 'g'), name: 'tilde' }
-                ];
                 
-                // Find all text elements
+                
+                // Method 1: Format-preserving replacement in individual text elements
                 const textElements = xmlDoc.getElementsByTagName('w:t');
+                let totalReplacements = 0;
                 
                 for (let i = 0; i < textElements.length; i++) {
                     const textElement = textElements[i];
                     let textContent = textElement.textContent;
                     let modified = false;
                     
-                    // Replace placeholders for each pattern style
+                    // Replace placeholders for each pattern style (same patterns as detection)
+                    const placeholderPatterns = [
+                        { pattern: /\{\{([^}]+)\}\}/gi, name: 'double-curly' },      // {{variable}}
+                        { pattern: /<<([^>]+)>>/gi, name: 'double-angle' },          // <<variable>>
+                        { pattern: /<([^<>]+)>/gi, name: 'single-angle' },           // <variable>
+                        { pattern: /\{([^{}]+)\}/gi, name: 'single-curly' },         // {variable}
+                        { pattern: /\[([^\[\]]+)\]/gi, name: 'single-square' },      // [variable]
+                        { pattern: /\[\[([^\[\]]+)\]\]/gi, name: 'double-square' }   // [[variable]]
+                    ];
+
                     for (const placeholder in replacements) {
                         if (replacements.hasOwnProperty(placeholder)) {
-                            const value = replacements[placeholder] || '';
+                            const value = String(replacements[placeholder] || '');
                             
-                            // Try each pattern to find and replace this placeholder
-                            placeholderPatterns.forEach(patternDef => {
-                                const pattern = patternDef.pattern(placeholder);
-                                if (pattern.test(textContent)) {
-                                    // Reset regex for actual replacement
-                                    pattern.lastIndex = 0;
-                                    textContent = textContent.replace(pattern, value);
-                                    modified = true;
+                            // Try all patterns to find and replace the placeholder
+                            placeholderPatterns.forEach(({ pattern, name }) => {
+                                // Create specific pattern for this placeholder
+                                const placeholderPattern = new RegExp(
+                                    pattern.source.replace('([^}]+)', `\\s*${this.escapeRegex(placeholder)}\\s*`)
+                                                  .replace('([^>]+)', `\\s*${this.escapeRegex(placeholder)}\\s*`)
+                                                  .replace('([^<>]+)', `\\s*${this.escapeRegex(placeholder)}\\s*`)
+                                                  .replace('([^{}]+)', `\\s*${this.escapeRegex(placeholder)}\\s*`)
+                                                  .replace('([^\\[\\]]+)', `\\s*${this.escapeRegex(placeholder)}\\s*`),
+                                    'gi'
+                                );
+                                
+                                const matches = textContent.match(placeholderPattern);
+                                if (matches) {
+                                    const oldContent = textContent;
+                                    textContent = textContent.replace(placeholderPattern, value);
+                                    
+                                    if (oldContent !== textContent) {
+                                        modified = true;
+                                        totalReplacements += matches.length;
+                                    }
                                 }
-                                // Reset for next iteration
-                                pattern.lastIndex = 0;
                             });
                         }
                     }
                     
-                    // Update the text content if modified
+                    // Update text content while preserving XML structure
                     if (modified) {
-                        textElement.textContent = textContent;
+                        // Instead of replacing textContent directly, create new text nodes
+                        // This preserves the <w:t> element structure
+                        this.updateTextElementContent(textElement, textContent);
+                        
                     }
                 }
+                
+                // Method 2: Handle split placeholders with formatting preservation
+                
+                
+                // For split placeholders, we need a more sophisticated approach
+                try {
+                    this.handleSplitPlaceholdersWithFormatting(xmlDoc, replacements);
+                } catch (error) {
+                    
+                    // Fallback to simple combined text replacement without formatting preservation
+                    this.handleSplitPlaceholdersFallback(xmlDoc, replacements);
+                }
+                
+                
                 
                 // Update the documentXml with modified content
                 documentXml = serializer.serializeToString(xmlDoc);
             },
             
+            // Helper method to update text element content while preserving structure
+            updateTextElementContent: function(textElement, newContent) {
+                // Preserve any existing attributes (like xml:space="preserve")
+                const attributes = {};
+                if (textElement.attributes) {
+                    for (let i = 0; i < textElement.attributes.length; i++) {
+                        const attr = textElement.attributes[i];
+                        attributes[attr.name] = attr.value;
+                    }
+                }
+                
+                // Clear existing content
+                while (textElement.firstChild) {
+                    textElement.removeChild(textElement.firstChild);
+                }
+                
+                // Add new text content
+                const textNode = textElement.ownerDocument.createTextNode(newContent);
+                textElement.appendChild(textNode);
+                
+                // Restore attributes
+                for (const [name, value] of Object.entries(attributes)) {
+                    textElement.setAttribute(name, value);
+                }
+            },
+            
+            // Helper method to handle split placeholders while preserving formatting
+            handleSplitPlaceholdersWithFormatting: function(xmlDoc, replacements) {
+                
+                
+                // Get all text elements and their parent runs
+                const textElements = xmlDoc.getElementsByTagName('w:t');
+                const runs = xmlDoc.getElementsByTagName('w:r');
+                
+                // Build a map of text content with run information
+                let combinedText = '';
+                const runMapping = [];
+                
+                for (let i = 0; i < textElements.length; i++) {
+                    const textElement = textElements[i];
+                    const parentRun = this.findParentRun(textElement);
+                    const startPos = combinedText.length;
+                    const content = textElement.textContent;
+                    combinedText += content;
+                    
+                    runMapping.push({
+                        textElement: textElement,
+                        parentRun: parentRun,
+                        startPos: startPos,
+                        endPos: combinedText.length,
+                        originalContent: content,
+                        runIndex: i
+                    });
+                }
+                
+                
+                
+                // Check for split placeholders in combined text (all patterns)
+                const placeholderPatterns = [
+                    { pattern: /\{\{([^}]+)\}\}/gi, name: 'double-curly' },      // {{variable}}
+                    { pattern: /<<([^>]+)>>/gi, name: 'double-angle' },          // <<variable>>
+                    { pattern: /<([^<>]+)>/gi, name: 'single-angle' },           // <variable>
+                    { pattern: /\{([^{}]+)\}/gi, name: 'single-curly' },         // {variable}
+                    { pattern: /\[([^\[\]]+)\]/gi, name: 'single-square' },      // [variable]
+                    { pattern: /\[\[([^\[\]]+)\]\]/gi, name: 'double-square' }   // [[variable]]
+                ];
+
+                for (const placeholder in replacements) {
+                    if (replacements.hasOwnProperty(placeholder)) {
+                        const value = String(replacements[placeholder] || '');
+                        
+                        // Try all placeholder patterns
+                        placeholderPatterns.forEach(({ pattern, name }) => {
+                            const placeholderPattern = new RegExp(
+                                pattern.source.replace('([^}]+)', `\\s*${this.escapeRegex(placeholder)}\\s*`)
+                                              .replace('([^>]+)', `\\s*${this.escapeRegex(placeholder)}\\s*`)
+                                              .replace('([^<>]+)', `\\s*${this.escapeRegex(placeholder)}\\s*`)
+                                              .replace('([^{}]+)', `\\s*${this.escapeRegex(placeholder)}\\s*`)
+                                              .replace('([^\\[\\]]+)', `\\s*${this.escapeRegex(placeholder)}\\s*`),
+                                'gi'
+                            );
+                            
+                            let match;
+                            while ((match = placeholderPattern.exec(combinedText)) !== null) {
+                                const matchStart = match.index;
+                                const matchEnd = match.index + match[0].length;
+                                
+                                
+                                
+                                // Find which runs contain this placeholder
+                                const affectedRuns = runMapping.filter(mapping => 
+                                    (mapping.startPos < matchEnd && mapping.endPos > matchStart)
+                                );
+                                
+                                if (affectedRuns.length > 1) {
+                                    
+                                    
+                                    // Use the first run's formatting for the replacement
+                                    const firstRun = affectedRuns[0];
+                                    
+                                    // Calculate the replacement text for first run
+                                    const beforePlaceholder = combinedText.substring(firstRun.startPos, matchStart);
+                                    const afterPlaceholder = combinedText.substring(matchEnd, firstRun.endPos);
+                                    const newFirstRunContent = beforePlaceholder + value + 
+                                        (matchEnd <= firstRun.endPos ? afterPlaceholder : '');
+                                    
+                                    // Update first run
+                                    this.updateTextElementContent(firstRun.textElement, newFirstRunContent);
+                                    
+                                    // Clear content from other affected runs that are completely within the match
+                                    for (let i = 1; i < affectedRuns.length; i++) {
+                                        const run = affectedRuns[i];
+                                        if (run.startPos >= matchStart && run.endPos <= matchEnd) {
+                                            // This run is completely within the placeholder - clear it
+                                            this.updateTextElementContent(run.textElement, '');
+                                        } else if (run.startPos < matchEnd && run.endPos > matchEnd) {
+                                            // This run extends beyond the placeholder - keep the part after
+                                            const remainingContent = combinedText.substring(matchEnd, run.endPos);
+                                            this.updateTextElementContent(run.textElement, remainingContent);
+                                        }
+                                    }
+                                    
+                                    
+                                }
+                            }
+                        });
+                    }
+                }
+            },
+            
             // Helper function to escape special regex characters
             escapeRegex: function(string) {
                 return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            },
+            
+            // Helper method to find parent run element by traversing DOM tree
+            findParentRun: function(element) {
+                let current = element.parentNode;
+                while (current && current.nodeType === Node.ELEMENT_NODE) {
+                    if (current.tagName === 'w:r') {
+                        return current;
+                    }
+                    current = current.parentNode;
+                }
+                return null;
+            },
+            
+            // Fallback method for split placeholder handling when formatting preservation fails
+            handleSplitPlaceholdersFallback: function(xmlDoc, replacements) {
+                
+                
+                const textElements = xmlDoc.getElementsByTagName('w:t');
+                
+                // Combine all text for split placeholder detection and replacement
+                let allText = '';
+                for (let i = 0; i < textElements.length; i++) {
+                    allText += textElements[i].textContent;
+                }
+                
+                
+                
+                // Check for placeholders in combined text (all patterns)
+                const placeholderPatterns = [
+                    { pattern: /\{\{([^}]+)\}\}/gi, name: 'double-curly' },      // {{variable}}
+                    { pattern: /<<([^>]+)>>/gi, name: 'double-angle' },          // <<variable>>
+                    { pattern: /<([^<>]+)>/gi, name: 'single-angle' },           // <variable>
+                    { pattern: /\{([^{}]+)\}/gi, name: 'single-curly' },         // {variable}
+                    { pattern: /\[([^\[\]]+)\]/gi, name: 'single-square' },      // [variable]
+                    { pattern: /\[\[([^\[\]]+)\]\]/gi, name: 'double-square' }   // [[variable]]
+                ];
+
+                for (const placeholder in replacements) {
+                    if (replacements.hasOwnProperty(placeholder)) {
+                        const value = String(replacements[placeholder] || '');
+                        
+                        // Try all placeholder patterns
+                        placeholderPatterns.forEach(({ pattern, name }) => {
+                            const placeholderPattern = new RegExp(
+                                pattern.source.replace('([^}]+)', `\\s*${this.escapeRegex(placeholder)}\\s*`)
+                                              .replace('([^>]+)', `\\s*${this.escapeRegex(placeholder)}\\s*`)
+                                              .replace('([^<>]+)', `\\s*${this.escapeRegex(placeholder)}\\s*`)
+                                              .replace('([^{}]+)', `\\s*${this.escapeRegex(placeholder)}\\s*`)
+                                              .replace('([^\\[\\]]+)', `\\s*${this.escapeRegex(placeholder)}\\s*`),
+                                'gi'
+                            );
+                            
+                            if (placeholderPattern.test(allText)) {
+                                // Replace in combined text
+                                placeholderPattern.lastIndex = 0;
+                                const newAllText = allText.replace(placeholderPattern, value);
+                                
+                                if (newAllText !== allText) {
+                                    // Simple approach: put all text in first element, clear others
+                                    if (textElements.length > 0) {
+                                        this.updateTextElementContent(textElements[0], newAllText);
+                                        for (let i = 1; i < textElements.length; i++) {
+                                            this.updateTextElementContent(textElements[i], '');
+                                        }
+                                    }
+                                    
+                                    // Update allText for next iteration
+                                    allText = newAllText;
+                                }
+                            }
+                        });
+                    }
+                }
             },
             
             // Combined method to replace both bookmarks and placeholders
