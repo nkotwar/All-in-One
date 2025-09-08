@@ -44,9 +44,29 @@ const DocxReplace = (function() {
                 // Combine all text content to handle split placeholders
                 let allTextContent = '';
                 for (let i = 0; i < textElements.length; i++) {
-                    allTextContent += textElements[i].textContent + ' ';
+                    allTextContent += textElements[i].textContent;
                 }
                 
+                // Also try to extract from paragraph elements to catch more text
+                const paragraphElements = xmlDoc.getElementsByTagName('w:p');
+                let paragraphText = '';
+                for (let i = 0; i < paragraphElements.length; i++) {
+                    paragraphText += paragraphElements[i].textContent + ' ';
+                }
+                
+                // Combine both extraction methods
+                const combinedText = allTextContent + ' ' + paragraphText;
+                
+                console.log(`📄 Text elements found: ${textElements.length}`);
+                console.log(`📄 Paragraph elements found: ${paragraphElements.length}`);
+                console.log(`📄 Combined text content:`, combinedText.substring(0, 800) + '...');
+                console.log(`🔍 Searching for placeholders with pattern: ${placeholderPattern}`);
+                
+                // Test for M/s specifically
+                if (combinedText.includes('M/s') || combinedText.includes('{M/s}')) {
+                    console.log(`🎯 M/s found in document text!`);
+                    console.log(`📍 Text around M/s:`, combinedText.match(/.{0,50}M\/s.{0,50}/g));
+                }
                 
                 
                 
@@ -56,27 +76,37 @@ const DocxReplace = (function() {
                 let match;
                 placeholderPattern.lastIndex = 0;
                 
-                while ((match = placeholderPattern.exec(allTextContent)) !== null) {
+                while ((match = placeholderPattern.exec(combinedText)) !== null) {
                     const placeholder = match[1].trim();
                     
-                    
+                    console.log(`🔍 Found potential placeholder: "${placeholder}"`);
                     
                     // Basic validation
                     if (placeholder.length > 0 && placeholder.length <= 100) {
-                        // Allow letters, numbers, underscores, hyphens, dots, spaces, and Unicode characters
-                        const validPattern = /^[\w\-.\s\u0900-\u097F\u0080-\u024F\u1E00-\u1EFF]+$/u;
+                        // Allow letters, numbers, underscores, hyphens, dots, spaces, forward slashes, and Unicode characters
+                        const validPattern = /^[\w\-./\s\u0900-\u097F\u0080-\u024F\u1E00-\u1EFF]+$/u;
                         const hasLetter = /[\p{L}]/u.test(placeholder);
+                        
+                        console.log(`📝 Validating "${placeholder}": pattern=${validPattern.test(placeholder)}, hasLetter=${hasLetter}`);
                         
                         if (validPattern.test(placeholder) && hasLetter) {
                             placeholders.add(placeholder);
-                            
+                            console.log(`✅ Added placeholder: "${placeholder}"`);
                         } else {
-                            
+                            console.log(`❌ Rejected placeholder: "${placeholder}" - Pattern: ${validPattern.test(placeholder)}, HasLetter: ${hasLetter}`);
                         }
                     } else {
-                        
+                        console.log(`❌ Placeholder too long/short: "${placeholder}" (length: ${placeholder.length})`);
                     }
                 }
+                
+                console.log(`📊 Final placeholder count: ${placeholders.size}`);
+                console.log(`📋 Final placeholders:`, Array.from(placeholders));
+                
+                // Test the validation pattern with M/s specifically
+                const testMsPattern = /^[\w\-./\s\u0900-\u097F\u0080-\u024F\u1E00-\u1EFF]+$/u;
+                console.log(`🧪 Testing "M/s" validation: ${testMsPattern.test('M/s')}`);
+                console.log(`🧪 Testing "M/s" has letter: ${/[\p{L}]/u.test('M/s')}`);
                 
                 
                 

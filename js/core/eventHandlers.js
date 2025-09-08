@@ -129,8 +129,17 @@ function clearEverything() {
     document.getElementById('fillAndOpen').disabled = true;
     updateSelectedPdfsList();
 
+    // Clear Word documents as well
+    if (window.wordDocHandler) {
+        window.wordDocHandler.clearAllWordDocs(true); // true = silent mode
+    }
+
     // Clear localStorage for selected PDFs
     localStorage.removeItem('selectedPdfs');
+
+    // Clear localStorage for Word documents
+    localStorage.removeItem('selectedWordDocs');
+    localStorage.removeItem('wordDocData');
 
     // Clear localStorage for form fields
     Object.keys(localStorage).forEach(key => {

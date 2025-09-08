@@ -441,7 +441,8 @@ async function loadPdfFields() {
     }
 
 
-    document.getElementById('fillAndOpen').disabled = uniqueFields.size === 0;
+    // Enable/disable button based on both PDF fields and Word documents
+    updateFillButtonState();
 }
 
 // Modified fillAndOpen handler to handle both PDF and DOCX
@@ -534,6 +535,37 @@ document.getElementById('fillAndOpen').addEventListener('click', async () => {
         showToast("Failed to generate documents. Please try again.", 'error');
     }
 });
+
+// Helper function to enable/disable Fill & Generate button based on available documents
+function updateFillButtonState() {
+    const fillButton = document.getElementById('fillAndOpen');
+    if (!fillButton) return;
+    
+    // Check if we have any PDF fields
+    const formContainer = document.getElementById('formContainer');
+    const hasPdfFields = formContainer && formContainer.querySelectorAll('input[name]').length > 0;
+    
+    // Check if we have any Word documents
+    const hasWordDocs = window.wordDocHandler && window.wordDocHandler.selectedWordDocs.length > 0;
+    
+    // Enable button if we have either PDF fields or Word documents
+    fillButton.disabled = !hasPdfFields && !hasWordDocs;
+    
+    // Update button text based on what we have
+    const iconSpan = fillButton.querySelector('.icon');
+    if (hasPdfFields && hasWordDocs) {
+        if (iconSpan) fillButton.innerHTML = '<span class="icon">📁</span> Fill & Generate All Documents';
+    } else if (hasWordDocs) {
+        if (iconSpan) fillButton.innerHTML = '<span class="icon">📝</span> Fill & Generate Word Documents';
+    } else if (hasPdfFields) {
+        if (iconSpan) fillButton.innerHTML = '<span class="icon">📄</span> Fill & Open PDF';
+    } else {
+        if (iconSpan) fillButton.innerHTML = '<span class="icon">📄</span> Fill & Generate Documents';
+    }
+}
+
+// Make the function globally available for the Word document handler
+window.updateFillButtonState = updateFillButtonState;
 
 // Suppress specific PDF.js warnings
 const originalConsoleWarn = console.warn;

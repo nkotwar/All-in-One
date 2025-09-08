@@ -25,7 +25,17 @@ const defaultFieldValues = {
     "Purpose of Advance": "Agricultural",
     "ID": "OVD",
     "MAKER": "131246",
-    "CHECKER Name": "Nitin Kotwar-139535",
+    "Staff Name": "Devendra Kumar Chaturvedi",
+    "Staff PF": "078940",
+    "Processing Officer":"Nitin Kotwar-139535",
+    "Sanctioning Officer": "Harmana Ram - 125245",
+    "Branch Manager": "Harmana Ram - 125245",
+    "INSPECTING OFFICIAL":"Nitin Kotwar-139535",
+    "Inspecting Officer":"Nitin Kotwar-139535",
+    "PF of Inspecting Officer":"139535",
+    "MAKER": "131246",
+    "CHECKER Name":"Nitin Kotwar",
+    "CHECKER PF": "139535",
     "CHECKER Designation": "AM",
     "Landlord PAN": "ALJPB1062B",
     "Branch(State) GST": "08AAACC2498P4Z0",
@@ -71,11 +81,10 @@ const defaultFieldValues = {
     "Death Certificate issued by": "",
     "Pension Received Posthumous": "",
     "M/s": "",
+    "Messrs": "",
     "Supplier": "",
     "Quotation No": "",
     "Quotation Date": "",
-    "INSPECTING OFFICIAL": "",
-    "Branch Manager": "",
     "Sanction Date": "",
     "Sanction Letter No": "",
     "Application Date": "",
@@ -145,43 +154,163 @@ const presets = {
 
 const fieldGroups = {
     "Basic Information": [
-        "Place", "Date", "DATE", "Day", "Month", "Year", "YY - Last 2 digits of Year", "Branch", "Region", "Zone", "State"
+        "Place",
+        "Date",
+        "Day",
+        "Month",
+        "Year",
+        "YY - Last 2 digits of Year",
+        "Branch",
+        "Branch Address",
+        "Branch(State) GST",
+        "Region",
+        "Zone",
+        "State"
     ],
     "Financials": [
-        "Rs", "Rs. - Amount Transferred to Dealer", "Amount", "Rupees", "ROI", "Facility", "Margin", "1st EMI Month", "Purpose of Advance", "Scheme", "Purpose", "Networth", "Expected Credits in a year", "Loan Account Number", "Loan Sanctioned Amount", "Disbursement Amount", "EMI Day", "Invoice Number"
+        "Rs",
+        "Rs. - Amount Transferred to Dealer",
+        "Amount",
+        "Rupees",
+        "ROI",
+        "Facility",
+        "Margin",
+        "NetWorth",
+        "Loan Account Number",
+        "Loan Sanctioned Amount",
+        "Disbursement Amount",
+        "Mode of Disbursement",
+        "EMI",
+        "1st EMI Month",
+        "EMI Day",
+        "Invoice Number",
+        "Purpose of Advance",
+        "Scheme",
+        "Purpose"
     ],
     "Customer & Personal Details": [
-        "M/s", "Proprietor", "Borrower", "Old Name", "Name", "Name Field 1", "Name Field 2", "Father Name", "Mobile No", "Old Mobile Number", "Mobile Number", "Mob", "email", "PAN", "AADHAR", "ID", "Co-Borrower-1", "Co-Borrower-2", "Co-Borrower-3"
+        "M/s",
+        "Messrs",
+        "Borrower",
+        "Name",
+        "Name Field 1",
+        "Name Field 2",
+        "Old Name",
+        "Father Name",
+        "DOB",
+        "Age",
+        "Mobile No",
+        "Mobile Number",
+        "Old Mobile Number",
+        "email",
+        "PAN",
+        "AADHAR",
+        "ID",
+        "Co-Borrower-1",
+        "Co-Borrower-2",
+        "Co-Borrower-3"
     ],
     "Business & Partnership Details": [
-        "Partner 1", "Partner 2", "Partner 3", "Partner 4", "Business Activity", "Business Description", "Business Nature", "Annual Income", "Sales", "Rating", "CIN", "Year of Establishment", "Dealing with us since", "Firm ID", "Product"
+        "Business Nature",
+        "Business Description",
+        "Business Activity",
+        "Year of Establishment",
+        "Date of Establishment",
+        "Dealing with us since",
+        "Annual Income",
+        "Sales",
+        "Rating",
+        "Udyam"
     ],
     "Account Details": [
-        "CIF", "CC LOAN Ac No", "Account No", "Account Number", "Saving Ac No", "Saving A/c No", "Account Type", "Udyam", "Nominee A/c No", "Deceased A/c No", "Receipt No", "Receipt Current Value"
+        "CIF",
+        "Account No",
+        "Account Number",
+        "CC LOAN Ac No",
+        "Saving Ac No",
+        "Saving A/c No",
+        "Nominee A/c No",
+        "Deceased A/c No",
+        "Receipt No",
+        "Receipt Current Value"
     ],
     "Address Details": [
-        "Address", "Borrower Address", "Supplier Address", "Nominee Address", "Office Address", "Business Address", "Village", "Tehsil", "District"
+        "Address",
+        "Office Address",
+        "Business Address",
+        "Supplier Address",
+        "Nominee Address",
+        "Village",
+        "Tehsil",
+        "District"
     ],
     "Nominee & Deceased Details": [
-        "Nominee", "Relation", "Deceased", "Date of Demise", "Death Certificate issued by", "Pension Received Posthumous", "Nominee Name", "Nominee Relation", "Nominee Age", "Nominee Date of Birth"
+        "Nominee",
+        "Relation",
+        "Deceased",
+        "Date of Demise",
+        "Death Certificate issued by",
+        "Pension Received Posthumous"
     ],
     "Property & Security Details": [
-        "Propery Area", "Property Address", "Property Owner", "Property Document Required for Mortgage - 1", "Property Document Required for Mortgage - 2", "Property Document Required for Mortgage - 3", "Property Document Required for Mortgage - 4", "Property Document Required for Mortgage - 5", "Property Document Required for Mortgage - 6", "Property Document Required for Mortgage - 7", "Security ID", "Policy No", "Policy Valid From", "Policy Valid To", "Asset ID"
+        "Security ID",
+        "Policy No",
+        "Policy Valid From",
+        "Policy Valid To",
+        "Asset ID"
+    ],
+    "Asset & Liability Details": [
+        "AssetCashBankBalance",
+        "AssetGold",
+        "AssetCapitalinBusiness",
+        "AssetVehicle",
+        "AssetImmovable",
+        "AssetMovable",
+        "AssetTotal",
+        "Liablities"
     ],
     "Supplier & Quotation Details": [
-        "Supplier", "Quotation No", "Quotation Date"
+        "Supplier",
+        "Quotation No",
+        "Quotation Date"
     ],
     "Sanction & Documentation": [
-        "Sanction Date", "Sanction Letter No", "Application Date", "Last Documentation Date"
+        "Application Date",
+        "Sanction Date",
+        "Sanction Letter No",
+        "Documentation Date",
+        "Last Documentation Date"
+    ],
+    "Landlord & Rent Details": [
+        "Landlord",
+        "Landlord PAN",
+        "Rent Month"
     ],
     "Fund Transfer (NEFT/RTGS)": [
-        "Sender Account Name", "Sender Account Number", "Sender Mobile", "Beneficiary Account Number", "Beneficiary IFSC", "Beneficiary Account Name", "Beneficiary Bank", "Beneficiary Branch", "Fund TRF Purpose", "UTR"
+        "Sender Account Name",
+        "Sender Account Number",
+        "Sender Mobile",
+        "Beneficiary Account Number",
+        "Beneficiary IFSC",
+        "Beneficiary Account Name",
+        "Beneficiary Bank",
+        "Beneficiary Branch",
+        "Fund TRF Purpose",
+        "UTR"
     ],
     "Internal & Officer Details": [
-        "Staff Name", "Staff PF", "Processing Officer", "Sanctioning Officer", "INSPECTING OFFICIAL", "Inspecting Officer", "PF of Inspecting Officer", "Branch Manager", "Advocate Name", "Officer Name", "Officer Designation", "MAKER", "CHECKER Name", "CHECKER PF", "CHECKER Designation"
-    ],
-    "Other Details": [
-        "Multipurpose Request 1", "Multipurpose Request 2"
+        "Staff Name",
+        "Staff PF",
+        "Processing Officer",
+        "Sanctioning Officer",
+        "Branch Manager",
+        "INSPECTING OFFICIAL",
+        "Inspecting Officer",
+        "Inspection Date",
+        "MAKER",
+        "CHECKER Name",
+        "CHECKER PF",
+        "CHECKER Designation"
     ]
 };
 
