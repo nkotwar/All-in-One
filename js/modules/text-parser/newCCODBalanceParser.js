@@ -9,7 +9,7 @@
  * - Significantly detailed format for banking compliance and monitoring
  */
 
-const NEW_CCOD_DEBUG = false;
+const NEW_CCOD_DEBUG = true;
 const newCcodDbg = (...args) => { if (NEW_CCOD_DEBUG) console.debug(...args); };
 
 class NewCCODBalanceParser {
@@ -82,31 +82,43 @@ class NewCCODBalanceParser {
         
     newCcodDbg('Extracted report info:', reportInfo);
         
-        // Find all data sections (there can be multiple sections separated by !E markers)
+        // Find all data sections (each !E marker starts a new section)
         const dataSections = [];
         let currentSectionStart = -1;
-        let insideDataSection = false;
         
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
             
             if (line.includes('!E')) {
-                if (!insideDataSection) {
-                    // Start of a data section
-                    currentSectionStart = i + 1;
-                    insideDataSection = true;
-                    newCcodDbg(`Data section starts at line ${currentSectionStart}`);
-                } else {
-                    // End of current data section
+                // If we were already in a section, close the previous one
+                if (currentSectionStart !== -1) {
                     dataSections.push({ start: currentSectionStart, end: i });
-                    newCcodDbg(`Data section ends at line ${i} (lines ${currentSectionStart} to ${i})`);
-                    insideDataSection = false;
+                    newCcodDbg(`Data section ends at line ${i} (lines ${currentSectionStart} to ${i - 1})`);
+                }
+                
+                // Start a new section after the !E marker
+                // We'll look for the first header row after !E and start from there
+                let headerFound = false;
+                for (let j = i + 1; j < lines.length && j < i + 10; j++) {
+                    const nextLine = lines[j];
+                    if (nextLine.includes('CUSTOMER NO') && nextLine.includes('ACCOUNT NO')) {
+                        currentSectionStart = j + 1; // Start after the header row
+                        headerFound = true;
+                        newCcodDbg(`Data section starts at line ${currentSectionStart} after !E marker and header at line ${j}`);
+                        break;
+                    }
+                }
+                
+                if (!headerFound) {
+                    // If no header found, start right after !E marker
+                    currentSectionStart = i + 1;
+                    newCcodDbg(`Data section starts at line ${currentSectionStart} (no header found after !E marker)`);
                 }
             }
         }
         
-        // If still inside a section at end of file, close it
-        if (insideDataSection && currentSectionStart !== -1) {
+        // Close the final section at end of file
+        if (currentSectionStart !== -1) {
             dataSections.push({ start: currentSectionStart, end: lines.length });
             newCcodDbg(`Final data section: lines ${currentSectionStart} to ${lines.length}`);
         }
@@ -130,6 +142,7 @@ class NewCCODBalanceParser {
                     const rowData = this.parseDataLine(line);
                     if (rowData && Object.keys(rowData).length > 0) {
                         objectData.push(rowData);
+                        newCcodDbg(`Parsed data row ${objectData.length} from section ${sectionIndex + 1}:`, rowData);
                     }
                 }
             }
@@ -201,197 +214,178 @@ class NewCCODBalanceParser {
     isDataLine(line) {
         if (!line || line.trim().length < 100) return false;
         
-        // Skip separator lines
-        if (line.includes('----') || line.includes('====')) return false;
-        
-        // Skip header lines
-        if (line.includes('CUSTOMER NO') || line.includes('ACCOUNT NO')) return false;
-        
-        // Skip empty lines or lines with only spaces
-        if (line.trim().length === 0) return false;
-        
-        // Check for customer number pattern (may have leading spaces)
         const trimmedLine = line.trim();
         
-        // Look for customer number pattern at start (10+ digits)
-        const customerNumberMatch = trimmedLine.match(/^\d{10,}/);
+        // Skip empty lines or lines with only spaces
+        if (trimmedLine.length === 0) return false;
+        
+        // Skip separator lines with dashes or equal signs
+        if (line.includes('----') || line.includes('====')) return false;
+        
+        // Skip header lines (containing column names)
+        if (trimmedLine.includes('CUSTOMER NO') && trimmedLine.includes('ACCOUNT NO')) return false;
+        
+        // Skip total/summary lines that we don't need
+        if (trimmedLine.startsWith('SEGMENT TOTAL') || 
+            trimmedLine.startsWith('PRODUCT TOTAL') || 
+            trimmedLine.startsWith('FACILITY TOTAL')) return false;
+        
+        // Data lines start with a 10-digit customer number
+        // Look for customer number pattern at start (exactly 10 digits)
+        const customerNumberMatch = trimmedLine.match(/^\d{10}/);
         if (!customerNumberMatch) {
-            // noisy; skip unless debugging
+            // Only log in debug mode to avoid noise
             newCcodDbg('No customer number found in line:', trimmedLine.substring(0, 50));
             return false;
         }
         
-        // Split into parts and check structure
+        // Split into parts and check basic structure
         const parts = trimmedLine.split(/\s+/);
         if (parts.length < 5) {
             newCcodDbg('Not enough parts in line:', parts.length);
             return false;
         }
         
-        // Second part should be account number (numeric)
+        // Second part should be account number (8+ digits)
         if (!/^\d{8,}$/.test(parts[1])) {
             newCcodDbg('Invalid account number format:', parts[1]);
             return false;
         }
         
-        // Should contain currency amounts and rates
-        const currencyMatches = line.match(/\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+\.\d{2}|\d{1,3}(?:,\d{3})+/g);
-        if (!currencyMatches || currencyMatches.length < 3) {
-            newCcodDbg('Not enough currency matches:', currencyMatches?.length || 0);
-            return false;
-        }
-        
-        // Should contain date patterns or N/A
-        const datePattern = /\d{2}\/\d{2}\/\d{4}|N\/A|EXPIRED/;
-        if (!datePattern.test(line)) {
-            newCcodDbg('No date pattern found in line');
-            return false;
-        }
-        
+        newCcodDbg('✓ Valid New CC/OD data line detected:', trimmedLine.substring(0, 80) + '...');
         return true;
     }
 
     /**
-     * Parse a single data line into structured data
+     * Parse a single data line into structured data using fixed-width positions
      */
     parseDataLine(line) {
         const rowData = {};
         
         try {
-            // Trim the line and handle the complex structure
-            let workingLine = line.trim();
-            newCcodDbg('Parsing CC/OD line:', workingLine.substring(0, 100) + '...');
+            // Use fixed-width positions similar to the regular CC/OD parser
+            // Based on the header alignment in the New CC/OD Balance file format
+            const customerNumber = line.substring(0, 20).trim();
+            const accountNumber = line.substring(20, 40).trim();
+            const accountType = line.substring(40, 67).trim();
+            const customerName = line.substring(67, 95).trim();
+            const interestRate = line.substring(95, 108).trim();
+            const limit = line.substring(108, 128).trim();
+            const drawingPower = line.substring(128, 148).trim();
+            const outstandingBalance = line.substring(148, 168).trim();
+            const unclearedBalance = line.substring(168, 188).trim();
+            const occBalance = line.substring(188, 208).trim();
+            const irregularity = line.substring(208, 228).trim();
+            const iracNew = line.substring(228, 236).trim();
+            const iracOld = line.substring(236, 244).trim();
+            const lastLimitApprovedDate = line.substring(244, 264).trim();
+            const uipy = line.substring(264, 284).trim();
+            const inca = line.substring(284, 304).trim();
+            const totalUri = line.substring(304, 324).trim();
+            const increment = line.substring(324, 344).trim();
+            const accrual = line.substring(344, 364).trim();
+            const adjustment = line.substring(364, 384).trim();
             
-            // Extract customer number (first field)
-            const customerMatch = workingLine.match(/^(\d{10,})/);
-            if (customerMatch) {
-                rowData['Customer Number'] = customerMatch[1];
-                workingLine = workingLine.substring(customerMatch[1].length).trim();
-            }
+            // Additional fields specific to New CC/OD format (approximate positions)
+            const accountTypeCode = line.substring(384, 400).trim();
+            const limitType = line.substring(400, 420).trim();
+            const limitExpiryDate = line.substring(420, 440).trim();
+            const benchmarkRate = line.substring(440, 455).trim();
+            const spread = line.substring(455, 470).trim();
+            const ratingPremium = line.substring(470, 485).trim();
+            const accountLevel = line.substring(485, 500).trim();
+            const nextInterestResetDate = line.substring(500, 525).trim();
+            const perDayInterest = line.substring(525, 550).trim();
+            const perDayPenalInterest = line.substring(550, 575).trim();
+            const interestAccrual = line.substring(575, 600).trim();
+            const penalInterestAccrued = line.substring(600, 625).trim();
+            const principalOutstanding = line.substring(625, 650).trim();
+            const unpaidInterest = line.substring(650, 675).trim();
+            const charges = line.substring(675, 700).trim();
             
-            // Extract account number (second field)
-            const accountMatch = workingLine.match(/^(\d{8,})/);
-            if (accountMatch) {
-                rowData['Account Number'] = accountMatch[1];
-                workingLine = workingLine.substring(accountMatch[1].length).trim();
-            }
-            
-            // Extract account type and customer name (complex section)
-            const nameSection = this.extractAccountTypeAndCustomerName(workingLine);
-            if (nameSection) {
-                rowData['Account Type Description'] = nameSection.accountType;
-                rowData['Customer Name'] = nameSection.customerName;
-                workingLine = nameSection.remainingLine;
-            }
-            
-            // Extract currency amounts, rates, and other fields
-            const currencyMatches = workingLine.match(/(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g);
-            const dateMatches = workingLine.match(/(\d{2}\/\d{2}\/\d{4})/g);
-            const rateMatches = workingLine.match(/(\d+\.\d{2})/g);
-            
-            newCcodDbg('Found currencies:', currencyMatches?.length || 0);
-            newCcodDbg('Found dates:', dateMatches?.length || 0);
-            newCcodDbg('Found rates:', rateMatches?.length || 0);
-            
-            // Map the extracted values to appropriate fields
-            if (rateMatches && rateMatches.length >= 1) {
-                rowData['Interest Rate'] = rateMatches[0] + '%';
-            }
-            
-            if (currencyMatches && currencyMatches.length >= 3) {
-                rowData['Limit'] = this.formatCurrency(currencyMatches[0]);
-                rowData['Drawing Power'] = this.formatCurrency(currencyMatches[1]);
-                rowData['Outstanding Balance'] = this.formatCurrency(currencyMatches[2]);
-                
-                // Additional currency fields if available
-                if (currencyMatches.length > 3) {
-                    rowData['Uncleared Balance'] = this.formatCurrency(currencyMatches[3]);
-                }
-                if (currencyMatches.length > 4) {
-                    rowData['OCC Balance'] = this.formatCurrency(currencyMatches[4]);
-                }
-            }
-            
-            if (dateMatches && dateMatches.length >= 1) {
-                rowData['Last Limit Approved Date'] = dateMatches[0];
-                if (dateMatches.length > 1) {
-                    rowData['Limit Expiry Date'] = dateMatches[1];
-                }
-                if (dateMatches.length > 2) {
-                    rowData['Next Interest Reset Date'] = dateMatches[2];
+            // Assign values to row data
+            if (customerNumber) rowData['Customer Number'] = customerNumber;
+            if (accountNumber) rowData['Account Number'] = accountNumber;
+            if (accountType) rowData['Account Type Description'] = accountType;
+            if (customerName) rowData['Customer Name'] = customerName;
+            if (interestRate && interestRate !== '0.00') {
+                if (interestRate === 'TIERE') {
+                    rowData['Interest Rate'] = 'TIERED';
+                } else {
+                    rowData['Interest Rate'] = interestRate;
                 }
             }
+            if (limit) rowData['Limit'] = this.formatCurrency(limit);
+            if (drawingPower) rowData['Drawing Power'] = this.formatCurrency(drawingPower);
+            if (outstandingBalance) rowData['Outstanding Balance'] = this.formatCurrency(outstandingBalance);
+            if (unclearedBalance) rowData['Uncleared Balance'] = this.formatCurrency(unclearedBalance);
+            if (occBalance) rowData['OCC Balance'] = this.formatCurrency(occBalance);
+            if (irregularity) rowData['Irregularity'] = this.formatCurrency(irregularity);
+            if (iracNew) rowData['IRAC New'] = iracNew;
+            if (iracOld) rowData['IRAC Old'] = iracOld;
+            if (lastLimitApprovedDate) rowData['Last Limit Approved Date'] = lastLimitApprovedDate;
+            if (uipy) rowData['UIPY'] = this.formatCurrency(uipy);
+            if (inca) rowData['INCA'] = this.formatCurrency(inca);
+            if (totalUri) rowData['Total URI'] = this.formatCurrency(totalUri);
+            if (increment) rowData['Increment'] = this.formatCurrency(increment);
+            if (accrual) rowData['Accrual'] = this.formatCurrency(accrual);
+            if (adjustment) rowData['Adjustment'] = this.formatCurrency(adjustment);
             
-            // Extract IRAC classifications
-            const iracMatch = workingLine.match(/(\d{2})\s+(\d{2})/);
-            if (iracMatch) {
-                rowData['IRAC New'] = iracMatch[1];
-                rowData['IRAC Old'] = iracMatch[2];
-            }
-            
-            // Extract status information
-            if (workingLine.includes('EXPIRED')) {
-                rowData['Limit Type'] = 'EXPIRED';
-            } else if (workingLine.includes('REGULAR REVIEW')) {
-                rowData['Limit Type'] = 'REGULAR REVIEW';
-            } else if (workingLine.includes('N/A')) {
-                rowData['Limit Type'] = 'N/A';
-            }
+            // Additional New CC/OD fields
+            if (accountTypeCode) rowData['Account Type Code'] = accountTypeCode;
+            if (limitType) rowData['Limit Type'] = limitType;
+            if (limitExpiryDate) rowData['Limit Expiry Date'] = limitExpiryDate;
+            if (benchmarkRate) rowData['Benchmark Rate'] = benchmarkRate;
+            if (spread) rowData['Spread'] = spread;
+            if (ratingPremium) rowData['Rating Premium'] = ratingPremium;
+            if (accountLevel) rowData['Account Level'] = accountLevel;
+            if (nextInterestResetDate) rowData['Next Interest Reset Date'] = nextInterestResetDate;
+            if (perDayInterest) rowData['Per Day Interest'] = this.formatCurrency(perDayInterest);
+            if (perDayPenalInterest) rowData['Per Day Penal Interest'] = this.formatCurrency(perDayPenalInterest);
+            if (interestAccrual) rowData['Interest Accrual'] = this.formatCurrency(interestAccrual);
+            if (penalInterestAccrued) rowData['Penal Interest Accrued'] = this.formatCurrency(penalInterestAccrued);
+            if (principalOutstanding) rowData['Principal Outstanding'] = this.formatCurrency(principalOutstanding);
+            if (unpaidInterest) rowData['Unpaid Interest'] = this.formatCurrency(unpaidInterest);
+            if (charges) rowData['Charges'] = this.formatCurrency(charges);
             
             return rowData;
             
         } catch (error) {
-            console.error('Error parsing CC/OD data line:', error);
+            console.error('Error parsing New CC/OD data line:', error);
             console.error('Problem line:', line.substring(0, 200) + '...');
             return null;
         }
     }
     
     /**
-     * Extract account type and customer name from the complex name section
-     */
-    extractAccountTypeAndCustomerName(line) {
-        // Look for patterns like "Account Type   Customer Name"
-        const patterns = [
-            // Pattern 1: Account type + Title + Name
-            /^([A-Z][A-Za-z\s\/-]+?)\s+((?:Mr\.|Mrs\.|Dr\.|Ms\.|Miss\.|Prof\.|Shri\.|Smt\.)\s+.+?)\s+(\d)/,
-            // Pattern 2: Account type + Name without clear title
-            /^([A-Z][A-Za-z\s\/-]{10,40})\s+([A-Z][A-Z\s\/]+[A-Z])\s+(\d)/,
-            // Pattern 3: Fallback - split at reasonable point
-            /^([A-Za-z\s\/-]{10,35})\s+(.+?)\s+(\d)/
-        ];
-        
-        for (const pattern of patterns) {
-            const match = line.match(pattern);
-            if (match) {
-                return {
-                    accountType: match[1].trim(),
-                    customerName: match[2].trim(),
-                    remainingLine: line.substring(match[1].length + match[2].length).trim()
-                };
-            }
-        }
-        
-        // Fallback - assume first 30 chars is account type, next 40 is customer name
-        if (line.length > 70) {
-            return {
-                accountType: line.substring(0, 30).trim(),
-                customerName: line.substring(30, 70).trim(),
-                remainingLine: line.substring(70).trim()
-            };
-        }
-        
-        return null;
-    }
-    
-    /**
      * Format currency values
      */
     formatCurrency(value) {
-        if (!value) return '';
-        // Remove commas and ensure proper decimal format
-        const numValue = parseFloat(value.replace(/,/g, ''));
-        return isNaN(numValue) ? value : numValue.toFixed(2);
+        if (!value || value.trim() === '' || value.trim() === '0.00') return '';
+        
+        // Handle negative values with - suffix
+        let isNegative = false;
+        if (value.endsWith('-')) {
+            isNegative = true;
+            value = value.substring(0, value.length - 1);
+        }
+        
+        // Handle positive values with + suffix
+        if (value.endsWith('+')) {
+            value = value.substring(0, value.length - 1);
+        }
+        
+        // Clean the value
+        let cleanValue = value.replace(/,/g, '').trim();
+        
+        // Parse as number
+        const numValue = parseFloat(cleanValue);
+        if (isNaN(numValue)) return value.trim();
+        
+        // Apply negative sign if needed
+        const finalValue = isNegative ? -numValue : numValue;
+        
+        return finalValue.toFixed(2);
     }
 
     /**

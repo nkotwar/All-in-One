@@ -73,7 +73,7 @@
 
 .select:hover > div,
 .select:focus-within > div {
-    max-height: 200px;
+    max-height: min(60vh, 400px);
     opacity: 1;
 }
 

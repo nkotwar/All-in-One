@@ -97,6 +97,7 @@ class TextParser {
             'cc-od-balance': (content) => this.parseCCODBalance(content),
             'sdv-accounts': (content) => this.parseSDVAccounts(content),
             'cgtmse-claims': (content) => this.parseCGTMSEClaims(content),
+            'glb-report': (content) => this.parseGLBReport(content),
             'fixed-width': (content) => this.parseFixedWidth(content),
             'delimited': (content) => this.parseDelimited(content),
             'regex': (content) => this.parseRegex(content),
@@ -556,10 +557,10 @@ class TextParser {
                 delimiter.value = '|';
                 customPattern.value = '';
                 break;
-            case 'cgtmse-claims':
-                parserType.value = 'cgtmse-claims';
+            case 'glb-report':
+                parserType.value = 'glb-report';
                 skipLines.value = '0';
-                headerRow.value = '1';
+                headerRow.value = '0';
                 customPattern.value = '';
                 break;
             case 'fixed-width':
@@ -1260,6 +1261,13 @@ class TextParser {
             return;
         }
 
+        // GLB Report pattern: YYYYMMDD_GLB (with or without .gz extension)
+        if (/^\d{8}_GLB$/i.test(cleanName) || /^\d{8}_GLB$/i.test(baseName.replace(/\.(gz|txt)$/i, ''))) {
+            setType('glb-report');
+            
+            return;
+        }
+
         // Extension based detection
         switch(extension) {
             case 'csv':
@@ -1346,6 +1354,8 @@ class TextParser {
 
             const parserType = parserTypeEl ? parserTypeEl.value : (this.pendingParserType || 'delimited');
             
+            // Close any existing GLB popup before processing new file
+            this.clearGLBReports();
             
             // Use parser factory for better extensibility
             const parsedData = await this.createParser(parserType, content);
@@ -1687,6 +1697,9 @@ class TextParser {
     }
 
     parseLoansBalance(content) {
+        // Clear any existing GLB reports when parsing other file types
+        this.clearGLBReports();
+        
         // Delegate to specialized LoansBalanceParser if available
         if (typeof LoansBalanceParser !== 'undefined') {
             try {
@@ -1711,6 +1724,7 @@ class TextParser {
     }
 
     parseLoansBalanceFallback(content) {
+        this.clearGLBReports();
         const lines = content.split('\n');
         const headers = [
             'Account Number', 'CIF Number', 'Product Name', 'Borrower Name',
@@ -1763,6 +1777,9 @@ class TextParser {
     }
 
     parseNewLoansBalance(content) {
+        // Clear any existing GLB reports when parsing other file types
+        this.clearGLBReports();
+        
         // Delegate to specialized NewLoansBalanceParser if available
         if (typeof NewLoansBalanceParser !== 'undefined') {
             try {
@@ -1785,6 +1802,7 @@ class TextParser {
     }
 
     parseNewLoansBalanceFallback(content) {
+        this.clearGLBReports();
         const lines = content.split('\n');
         const headers = [
             'Account Number', 'CIF Number', 'Product Name', 'Borrower Name',
@@ -1849,6 +1867,9 @@ class TextParser {
     }
 
     parseNewCCODBalance(content) {
+        // Clear any existing GLB reports when parsing other file types
+        this.clearGLBReports();
+        
         // Delegate to specialized NewCCODBalanceParser if available
         if (typeof NewCCODBalanceParser !== 'undefined') {
             try {
@@ -1871,6 +1892,7 @@ class TextParser {
     }
 
     parseNewCCODBalanceFallback(content) {
+        this.clearGLBReports();
         const lines = content.split('\n');
         const headers = [
             'Customer Number', 'Account Number', 'Account Type Description', 'Customer Name',
@@ -1915,6 +1937,9 @@ class TextParser {
     }
 
     parseCCODBalance(content) {
+        // Clear any existing GLB reports when parsing other file types
+        this.clearGLBReports();
+        
         // Delegate to specialized CCODBalanceParser if available
         if (typeof CCODBalanceParser !== 'undefined') {
             try {
@@ -1937,6 +1962,7 @@ class TextParser {
     }
 
     parseCCODBalanceFallback(content) {
+        this.clearGLBReports();
         const lines = content.split('\n');
         const headers = [
             'Customer Number', 'Account Number', 'Account Type Description', 'Customer Name',
@@ -1983,6 +2009,9 @@ class TextParser {
     }
 
     parseSDVAccounts(content) {
+        // Clear any existing GLB reports when parsing other file types
+        this.clearGLBReports();
+        
         // Delegate to specialized SDV parser if available
         if (window.SDVAccountsParser) {
             const parser = new window.SDVAccountsParser();
@@ -2001,6 +2030,7 @@ class TextParser {
     }
 
     parseSDVAccountsFallback(content) {
+        this.clearGLBReports();
         const lines = content.split('\n');
         const headers = [
             'SR_NO', 'CIF_NUMBER', 'SDV_ACCOUNT_NUMBER', 'LOCKER_HOLDER',
@@ -2031,6 +2061,9 @@ class TextParser {
     }
 
     parseCGTMSEClaims(content) {
+        // Clear any existing GLB reports when parsing other file types
+        this.clearGLBReports();
+        
         // Delegate to specialized CGTMSE parser if available
     if (typeof parseCGTMSEClaims === 'function') {
             const result = parseCGTMSEClaims(content);
@@ -2069,7 +2102,174 @@ class TextParser {
         return { headers, data };
     }
 
+    parseGLBReport(content) {
+        // Use specialized GLB Report parser if available
+        if (typeof GLBReportParser !== 'undefined') {
+            try {
+                const parser = new GLBReportParser();
+                const result = parser.parse(content, this.currentFileName);
+                
+                if (result.success) {
+                    // Convert to the format expected by the text parser
+                    const combinedData = [];
+                    const maxRows = Math.max(result.data.assets.length, result.data.liabilities.length);
+                    
+                    for (let i = 0; i < maxRows; i++) {
+                        const asset = result.data.assets[i] || { header: '', value: 0, type: '' };
+                        const liability = result.data.liabilities[i] || { header: '', value: 0, type: '' };
+                        
+                        combinedData.push([
+                            asset.header,
+                            asset.value > 0 ? asset.value.toFixed(2) : '',
+                            liability.header,
+                            liability.value > 0 ? liability.value.toFixed(2) : ''
+                        ]);
+                    }
+                    
+                    // Store the parsed result for potential HTML generation
+                    this.glbReportResult = result;
+                    
+                    // Add a custom display method for GLB reports
+                    setTimeout(() => {
+                        this.displayGLBReportSummary(result);
+                    }, 100);
+                    
+                    return {
+                        headers: ['Assets', 'Asset Value', 'Liabilities', 'Liability Value'],
+                        data: combinedData
+                    };
+                } else {
+                    throw new Error('GLB report parsing failed');
+                }
+            } catch (error) {
+                console.error('GLBReportParser failed:', error);
+                throw error;
+            }
+        } else {
+            throw new Error('GLBReportParser not available. Please ensure glbReportParser.js is loaded.');
+        }
+    }
+
+    clearGLBReports() {
+        // Close any existing GLB popup
+        const existingPopup = document.getElementById('glb-report-popup');
+        if (existingPopup) {
+            existingPopup.remove();
+        }
+    }
+
+    displayGLBReportSummary(parsedResult) {
+        // Close any existing GLB popup first
+        this.clearGLBReports();
+
+        // Create popup overlay
+        const popup = document.createElement('div');
+        popup.id = 'glb-report-popup';
+        popup.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        `;
+
+        // Create popup content
+        const popupContent = document.createElement('div');
+        popupContent.style.cssText = `
+            background: white;
+            max-width: 90%;
+            max-height: 90%;
+            overflow: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            padding: 20px;
+        `;
+
+        // Create close button
+        const closeButton = document.createElement('button');
+        closeButton.innerHTML = '✕';
+        closeButton.style.cssText = `
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background-color 0.2s;
+        `;
+        
+        closeButton.onmouseover = () => closeButton.style.backgroundColor = '#f0f0f0';
+        closeButton.onmouseout = () => closeButton.style.backgroundColor = 'transparent';
+        closeButton.onclick = () => popup.remove();
+
+        // Add GLB report content
+        if (typeof GLBReportParser !== 'undefined') {
+            const parser = new GLBReportParser();
+            popupContent.innerHTML = parser.generateHTMLTable(parsedResult);
+        }
+
+        // Assemble popup
+        popupContent.appendChild(closeButton);
+        popup.appendChild(popupContent);
+        document.body.appendChild(popup);
+
+        // Close popup when clicking outside content
+        popup.onclick = (e) => {
+            if (e.target === popup) {
+                popup.remove();
+            }
+        };
+
+        // Close popup with Escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                popup.remove();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+    }
+
+    formatIndianCurrency(amount) {
+        if (!amount || amount === 0) return '0.00';
+        
+        // Convert to Indian numbering system (lakhs, crores)
+        const crores = Math.floor(amount / 10000000);
+        const lakhs = Math.floor((amount % 10000000) / 100000);
+        const thousands = Math.floor((amount % 100000) / 1000);
+        const hundreds = amount % 1000;
+
+        let result = [];
+        if (crores > 0) result.push(crores + (crores === 1 ? ' Cr' : ' Cr'));
+        if (lakhs > 0) result.push(lakhs + (lakhs === 1 ? ' L' : ' L'));
+        if (thousands > 0 || (crores === 0 && lakhs === 0)) {
+            result.push(new Intl.NumberFormat('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(thousands * 1000 + hundreds));
+        }
+
+        return result.join(' ') || '0.00';
+    }
+
     parseFixedWidth(content) {
+        // Clear any existing GLB reports when parsing other file types
+        this.clearGLBReports();
+        
         const lines = content.split('\n');
         const skipLines = parseInt(document.getElementById('skipLines').value);
         const headerRowIndex = parseInt(document.getElementById('headerRow').value) - 1;
@@ -2132,6 +2332,9 @@ class TextParser {
     }
 
     parseDelimited(content) {
+        // Clear any existing GLB reports when parsing other file types
+        this.clearGLBReports();
+        
         const lines = content.split('\n');
         const delimiter = document.getElementById('delimiter').value.replace('\\t', '\t');
         const skipLines = parseInt(document.getElementById('skipLines').value);
@@ -2155,6 +2358,7 @@ class TextParser {
     }
 
     parseRegex(content) {
+        this.clearGLBReports();
         const lines = content.split('\n');
         const pattern = document.getElementById('customPattern').value;
         const skipLines = parseInt(document.getElementById('skipLines').value);
@@ -2179,6 +2383,7 @@ class TextParser {
     }
 
     parsePositional(content) {
+        this.clearGLBReports();
         // Implement positional parsing based on character positions
         const lines = content.split('\n');
         const skipLines = parseInt(document.getElementById('skipLines').value);

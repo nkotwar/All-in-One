@@ -55,31 +55,43 @@ class CCODBalanceParser {
         
         ccodDbg('Extracted report info:', reportInfo);
         
-        // Find all data sections (there can be multiple sections separated by !E markers)
+        // Find all data sections (each !E marker starts a new section)
         const dataSections = [];
         let currentSectionStart = -1;
-        let insideDataSection = false;
         
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
             
             if (line.includes('!E')) {
-                if (!insideDataSection) {
-                    // Start of a data section
-                    currentSectionStart = i + 1;
-                    insideDataSection = true;
-                    ccodDbg(`Data section starts at line ${currentSectionStart}`);
-                } else {
-                    // End of current data section
+                // If we were already in a section, close the previous one
+                if (currentSectionStart !== -1) {
                     dataSections.push({ start: currentSectionStart, end: i });
-                    ccodDbg(`Data section ends at line ${i} (lines ${currentSectionStart} to ${i})`);
-                    insideDataSection = false;
+                    ccodDbg(`Data section ends at line ${i} (lines ${currentSectionStart} to ${i - 1})`);
+                }
+                
+                // Start a new section after the !E marker
+                // We'll look for the first header row after !E and start from there
+                let headerFound = false;
+                for (let j = i + 1; j < lines.length && j < i + 10; j++) {
+                    const nextLine = lines[j];
+                    if (nextLine.includes('CUSTOMER NO') && nextLine.includes('ACCOUNT NO')) {
+                        currentSectionStart = j + 1; // Start after the header row
+                        headerFound = true;
+                        ccodDbg(`Data section starts at line ${currentSectionStart} after !E marker and header at line ${j}`);
+                        break;
+                    }
+                }
+                
+                if (!headerFound) {
+                    // If no header found, start right after !E marker
+                    currentSectionStart = i + 1;
+                    ccodDbg(`Data section starts at line ${currentSectionStart} (no header found after !E marker)`);
                 }
             }
         }
         
-        // If still inside a section at end of file, close it
-        if (insideDataSection && currentSectionStart !== -1) {
+        // Close the final section at end of file
+        if (currentSectionStart !== -1) {
             dataSections.push({ start: currentSectionStart, end: lines.length });
             ccodDbg(`Final data section: lines ${currentSectionStart} to ${lines.length}`);
         }
@@ -175,39 +187,41 @@ class CCODBalanceParser {
     isDataLine(line) {
         if (!line || line.trim().length < 50) return false;
         
-        // Skip separator lines
-        if (line.includes('----') || line.includes('====')) return false;
-        
-        // Skip header lines
-        if (line.includes('CUSTOMER NO') || line.includes('ACCOUNT NO')) return false;
-        
-        // Skip summary/total lines
-        if (line.includes('SEGMENT TOTAL') || line.includes('PRODUCT TOTAL') || line.includes('FACILITY TOTAL')) return false;
-        
-        // Skip empty lines or lines with only spaces
-        if (line.trim().length === 0) return false;
-        
-        // Check for customer number pattern (may have leading spaces)
         const trimmedLine = line.trim();
         
-        // Look for customer number pattern at start (10+ digits)
-        const customerNumberMatch = trimmedLine.match(/^\d{10,}/);
+        // Skip empty lines or lines with only spaces
+        if (trimmedLine.length === 0) return false;
+        
+        // Skip separator lines with dashes or equal signs
+        if (line.includes('----') || line.includes('====')) return false;
+        
+        // Skip header lines (containing column names)
+        if (trimmedLine.includes('CUSTOMER NO') && trimmedLine.includes('ACCOUNT NO')) return false;
+        
+        // Skip total/summary lines that we don't need
+        if (trimmedLine.startsWith('SEGMENT TOTAL') || 
+            trimmedLine.startsWith('PRODUCT TOTAL') || 
+            trimmedLine.startsWith('FACILITY TOTAL')) return false;
+        
+        // Data lines start with a 10-digit customer number
+        // Look for customer number pattern at start (exactly 10 digits)
+        const customerNumberMatch = trimmedLine.match(/^\d{10}/);
         if (!customerNumberMatch) {
             return false;
         }
         
-        // Split into parts and check structure
+        // Split into parts and check basic structure
         const parts = trimmedLine.split(/\s+/);
         if (parts.length < 5) {
             return false;
         }
         
-        // Second part should be account number (numeric)
+        // Second part should be account number (8+ digits)
         if (!/^\d{8,}$/.test(parts[1])) {
             return false;
         }
         
-    ccodDbg('✓ Valid CC/OD data line detected:', trimmedLine.substring(0, 80) + '...');
+        ccodDbg('✓ Valid CC/OD data line detected:', trimmedLine.substring(0, 80) + '...');
         return true;
     }
 

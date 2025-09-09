@@ -643,3 +643,334 @@
   font-size: 10px;
   opacity: 0.7;
 }
+
+/* GLB Report Specific Styles */
+.glb-report-container {
+  max-width: 100%;
+  margin: 20px 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.glb-report-container .report-header {
+  background: linear-gradient(135deg, #2c3e50, #34495e);
+  color: white;
+  padding: 20px;
+  text-align: center;
+}
+
+.glb-report-container .report-header h3 {
+  margin: 0 0 10px 0;
+  font-size: 1.5em;
+  font-weight: 600;
+}
+
+.glb-report-container .report-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.glb-report-container .report-info p {
+  margin: 5px 0;
+  opacity: 0.9;
+  font-size: 0.9em;
+}
+
+.balance-sheet-container {
+  padding: 0;
+}
+
+.balance-sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.balance-sheet-table thead {
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+}
+
+.balance-sheet-table th {
+  padding: 15px 12px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-right: 1px solid rgba(255,255,255,0.2);
+}
+
+.balance-sheet-table th:last-child {
+  border-right: none;
+}
+
+.balance-sheet-table tbody tr {
+  border-bottom: 1px solid #e9ecef;
+  transition: all 0.2s ease;
+}
+
+.balance-sheet-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.balance-sheet-table tbody tr:nth-child(even) {
+  background: #fafbfc;
+}
+
+.balance-sheet-table tbody tr:nth-child(even):hover {
+  background: #f1f3f4;
+}
+
+.balance-sheet-table td {
+  padding: 12px;
+  text-align: left;
+  vertical-align: middle;
+  border-right: 1px solid #dee2e6;
+}
+
+.balance-sheet-table td:last-child {
+  border-right: none;
+}
+
+.balance-sheet-table .asset-header,
+.balance-sheet-table .liability-header {
+  font-weight: 500;
+  color: #2c3e50;
+  max-width: 250px;
+  word-wrap: break-word;
+}
+
+.balance-sheet-table .asset-value,
+.balance-sheet-table .liability-value {
+  text-align: right;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-weight: 500;
+  min-width: 120px;
+}
+
+.balance-sheet-table .asset-value.credit,
+.balance-sheet-table .liability-value.credit {
+  color: #28a745;
+}
+
+.balance-sheet-table .asset-value.debit,
+.balance-sheet-table .liability-value.debit {
+  color: #dc3545;
+}
+
+.balance-sheet-table tfoot {
+  background: #f8f9fa;
+  border-top: 2px solid #007bff;
+}
+
+.balance-sheet-table tfoot td {
+  padding: 15px 12px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.balance-sheet-table .total-assets,
+.balance-sheet-table .total-liabilities {
+  text-align: right;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 1.1em;
+  color: #007bff;
+}
+
+.glb-report-container .report-summary {
+  background: #f8f9fa;
+  padding: 20px;
+  border-top: 1px solid #dee2e6;
+}
+
+.glb-report-container .report-summary h4 {
+  margin: 0 0 10px 0;
+  color: #2c3e50;
+  font-size: 1.1em;
+}
+
+.glb-report-container .report-summary p {
+  margin: 5px 0;
+  color: #6c757d;
+  font-size: 0.9em;
+}
+
+.glb-report-container .balance-status {
+  margin-top: 15px;
+  padding: 10px 15px;
+  border-radius: 6px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.glb-report-container .balance-status.balanced {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.glb-report-container .balance-status.unbalanced {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.balance-sheet-table .section-header-row {
+  background: #e9ecef !important;
+  font-weight: bold;
+  border-top: 2px solid #007bff;
+}
+
+.balance-sheet-table .section-header {
+  color: #495057;
+  text-align: center;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 10px 8px;
+}
+
+.balance-sheet-table tr.no-value {
+  opacity: 0.7;
+}
+
+.balance-sheet-table tr.has-value {
+  font-weight: 500;
+}
+
+.balance-sheet-table tr.has-value:hover {
+  background: #fff3cd !important;
+  border-left: 3px solid #ffc107;
+}
+
+/* Major section dividers */
+.balance-sheet-table .major-section-divider {
+  background: linear-gradient(135deg, #6f42c1, #5a67d8) !important;
+  color: white !important;
+  border-top: 3px solid #4c51bf;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.balance-sheet-table .major-section-header {
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.1em;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 15px 10px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Enhanced row styling */
+.balance-sheet-table tr.has-monetary-value {
+  background: #f8f9fa;
+  font-weight: 500;
+  border-left: 2px solid #28a745;
+}
+
+.balance-sheet-table tr.structural-entry {
+  background: #ffffff;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.balance-sheet-table tr.both-sides-value {
+  background: #e8f5e8;
+  border-left: 3px solid #28a745;
+  font-weight: bold;
+}
+
+.balance-sheet-table .has-value {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.balance-sheet-table .no-value {
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Summary grid styling */
+.report-summary .summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin: 15px 0;
+}
+
+.report-summary .summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8f9fa;
+  padding: 12px 15px;
+  border-radius: 8px;
+  border-left: 4px solid #007bff;
+}
+
+.report-summary .summary-label {
+  font-weight: 500;
+  color: #495057;
+}
+
+.report-summary .summary-value {
+  font-weight: bold;
+  color: #2c3e50;
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+
+/* Main section heading styling */
+.balance-sheet-table tr.section-heading-row {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef) !important;
+  border-top: 2px solid #007bff;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.balance-sheet-table .main-heading {
+  font-weight: bold;
+  font-size: 0.95em;
+  color: #495057;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(0, 123, 255, 0.05);
+  padding: 8px 12px;
+}
+
+.balance-sheet-table .main-heading:before {
+  content: "📊 ";
+  margin-right: 5px;
+}
+
+/* Responsive design for GLB reports */
+@media (max-width: 768px) {
+  .glb-report-container .report-info {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+  
+  .balance-sheet-table {
+    font-size: 0.8em;
+  }
+  
+  .balance-sheet-table th,
+  .balance-sheet-table td {
+    padding: 8px 6px;
+  }
+  
+  .balance-sheet-table .asset-header,
+  .balance-sheet-table .liability-header {
+    max-width: 150px;
+    font-size: 0.85em;
+  }
+  
+  .balance-sheet-table .asset-value,
+  .balance-sheet-table .liability-value {
+    min-width: 80px;
+    font-size: 0.8em;
+  }
+}

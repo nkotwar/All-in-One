@@ -167,27 +167,6 @@ const fieldGroups = {
         "Zone",
         "State"
     ],
-    "Financials": [
-        "Rs",
-        "Rs. - Amount Transferred to Dealer",
-        "Amount",
-        "Rupees",
-        "ROI",
-        "Facility",
-        "Margin",
-        "NetWorth",
-        "Loan Account Number",
-        "Loan Sanctioned Amount",
-        "Disbursement Amount",
-        "Mode of Disbursement",
-        "EMI",
-        "1st EMI Month",
-        "EMI Day",
-        "Invoice Number",
-        "Purpose of Advance",
-        "Scheme",
-        "Purpose"
-    ],
     "Customer & Personal Details": [
         "M/s",
         "Messrs",
@@ -210,6 +189,16 @@ const fieldGroups = {
         "Co-Borrower-2",
         "Co-Borrower-3"
     ],
+    "Asset & Liability Details": [
+        "AssetCashBankBalance",
+        "AssetGold",
+        "AssetCapitalinBusiness",
+        "AssetVehicle",
+        "AssetImmovable",
+        "AssetMovable",
+        "AssetTotal",
+        "Liablities"
+    ],
     "Business & Partnership Details": [
         "Business Nature",
         "Business Description",
@@ -222,6 +211,37 @@ const fieldGroups = {
         "Rating",
         "Udyam"
     ],
+    "Address Details": [
+        "Address",
+        "Office Address",
+        "Business Address",
+        "Supplier Address",
+        "Nominee Address",
+        "Village",
+        "Tehsil",
+        "District"
+    ],
+    "Financials": [
+        "Rs",
+        "Rs. - Amount Transferred to Dealer",
+        "Amount",
+        "Rupees",
+        "ROI",
+        "Facility",
+        "Margin",
+        "NetWorth",
+        "Loan Account Number",
+        "Loan Sanctioned Amount",
+        "Disbursement Amount",
+        "Mode of Disbursement",
+        "EMI",
+        "1st EMI Month",
+        "EMI Day",
+        "Invoice Number",
+        "Purpose of Advance",
+        "Scheme",
+        "Purpose"
+    ],
     "Account Details": [
         "CIF",
         "Account No",
@@ -233,16 +253,6 @@ const fieldGroups = {
         "Deceased A/c No",
         "Receipt No",
         "Receipt Current Value"
-    ],
-    "Address Details": [
-        "Address",
-        "Office Address",
-        "Business Address",
-        "Supplier Address",
-        "Nominee Address",
-        "Village",
-        "Tehsil",
-        "District"
     ],
     "Nominee & Deceased Details": [
         "Nominee",
@@ -258,16 +268,6 @@ const fieldGroups = {
         "Policy Valid From",
         "Policy Valid To",
         "Asset ID"
-    ],
-    "Asset & Liability Details": [
-        "AssetCashBankBalance",
-        "AssetGold",
-        "AssetCapitalinBusiness",
-        "AssetVehicle",
-        "AssetImmovable",
-        "AssetMovable",
-        "AssetTotal",
-        "Liablities"
     ],
     "Supplier & Quotation Details": [
         "Supplier",
