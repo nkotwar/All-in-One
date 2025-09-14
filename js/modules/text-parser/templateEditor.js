@@ -7,13 +7,20 @@ class TemplateEditor {
     constructor(wordTemplateGenerator) {
         this.wordTemplateGenerator = wordTemplateGenerator;
         this.textParser = wordTemplateGenerator.textParser;
-        this.mappings = {}; // Store column to placeholder mappings
+        this.mappings = {}; // Store placeholder mappings: { placeholder: { type: 'column|custom|default', value: string, columnIndex?: number } }
         this.previewMode = false;
         this.sampleRowIndex = 0;
         
         this.editorModal = null;
         this.placeholderElements = [];
         this.columnElements = [];
+        
+        // Import default values from constants
+        this.defaultFieldValues = window.defaultFieldValues || {};
+        
+        // Debug logging
+        console.log('TemplateEditor: defaultFieldValues loaded:', Object.keys(this.defaultFieldValues).length, 'entries');
+        console.log('Sample defaultFieldValues:', Object.entries(this.defaultFieldValues).slice(0, 5));
     }
 
     showEditor(templateDoc, templateInfo) {
@@ -227,6 +234,10 @@ class TemplateEditor {
             
             const isBookmark = this.templateBookmarks.includes(placeholder);
             const placeholderType = isBookmark ? 'bookmark' : 'text';
+            const defaultValue = this.defaultFieldValues[placeholder] || '';
+            
+            // Debug logging for each placeholder
+            console.log(`Placeholder: ${placeholder}, Default Value: "${defaultValue}"`);
             
             placeholderElement.innerHTML = `
                 <div class="placeholder-header">
@@ -244,8 +255,29 @@ class TemplateEditor {
                         <span class="mapped-column-name"></span>
                         <span class="mapped-column-preview"></span>
                     </div>
+                    <div class="custom-text-section">
+                        <div class="custom-text-header">
+                            <span>Custom Text:</span>
+                            <button class="use-custom-btn" title="Use custom text instead of data column">
+                                <i class="material-icons">edit</i>
+                                Use Custom
+                            </button>
+                        </div>
+                        <input type="text" class="custom-text-input" placeholder="${defaultValue ? `Default: ${defaultValue}` : 'Enter custom text...'}" value="${defaultValue}">
+                        <div class="default-value-info" style="display: ${defaultValue ? 'block' : 'none'};">
+                            <small>Default value: <strong>${defaultValue}</strong></small>
+                        </div>
+                    </div>
                 </div>
             `;
+            
+            // Set initial state based on default value
+            if (defaultValue) {
+                this.setPlaceholderMapping(placeholder, {
+                    type: 'default',
+                    value: defaultValue
+                }, placeholderElement);
+            }
             
             // Drop zone events
             const dropZone = placeholderElement.querySelector('.drop-zone');
@@ -276,6 +308,36 @@ class TemplateEditor {
                 this.showColumnSelector(placeholder, placeholderElement);
             });
             
+            // Use custom text button
+            placeholderElement.querySelector('.use-custom-btn').addEventListener('click', () => {
+                this.useCustomText(placeholder, placeholderElement);
+            });
+            
+            // Custom text input events
+            const customInput = placeholderElement.querySelector('.custom-text-input');
+            customInput.addEventListener('input', (e) => {
+                this.updateCustomText(placeholder, e.target.value, placeholderElement);
+            });
+            
+            customInput.addEventListener('blur', (e) => {
+                const value = e.target.value.trim();
+                if (value) {
+                    this.setPlaceholderMapping(placeholder, {
+                        type: 'custom',
+                        value: value
+                    }, placeholderElement);
+                } else if (defaultValue) {
+                    // Revert to default if empty
+                    this.setPlaceholderMapping(placeholder, {
+                        type: 'default',
+                        value: defaultValue
+                    }, placeholderElement);
+                    e.target.value = defaultValue;
+                } else {
+                    this.clearMapping(placeholder, placeholderElement);
+                }
+            });
+            
             // Clear mapping button
             placeholderElement.querySelector('.clear-mapping-btn').addEventListener('click', () => {
                 this.clearMapping(placeholder, placeholderElement);
@@ -283,61 +345,154 @@ class TemplateEditor {
             
             container.appendChild(placeholderElement);
             this.placeholderElements.push(placeholderElement);
+            
+            // Set initial state based on default value AFTER adding to DOM
+            if (defaultValue) {
+                console.log(`Setting default mapping for ${placeholder}: "${defaultValue}"`);
+                this.setPlaceholderMapping(placeholder, {
+                    type: 'default',
+                    value: defaultValue
+                }, placeholderElement);
+            }
         });
     }
 
-    mapColumnToPlaceholder(columnName, columnIndex, placeholder, placeholderElement) {
-        // Store mapping - now just store the column name
-        this.mappings[placeholder] = columnName;
-        
-        // Update UI
-        const dropZone = placeholderElement.querySelector('.drop-zone');
-        const mappedColumn = placeholderElement.querySelector('.mapped-column');
-        const clearBtn = placeholderElement.querySelector('.clear-mapping-btn');
-        
-        dropZone.style.display = 'none';
-        mappedColumn.style.display = 'block';
-        clearBtn.style.display = 'block';
-        
-        // Update mapped column display
-        const sampleData = this.textParser.filteredData[this.sampleRowIndex] || [];
-        const sampleValue = sampleData[columnIndex] || '';
-        
-        mappedColumn.querySelector('.mapped-column-name').textContent = columnName;
-        mappedColumn.querySelector('.mapped-column-preview').textContent = this.truncateText(sampleValue, 40);
-        
-        placeholderElement.classList.add('mapped');
-        
-        // Update mapping count
+    // New method to handle different mapping types
+    setPlaceholderMapping(placeholder, mapping, placeholderElement) {
+        this.mappings[placeholder] = mapping;
+        this.updatePlaceholderDisplay(placeholder, placeholderElement);
         this.updateMappingCount();
+    }
+
+    // New method to handle custom text usage
+    useCustomText(placeholder, placeholderElement) {
+        const customInput = placeholderElement.querySelector('.custom-text-input');
+        const value = customInput.value.trim();
         
-        // Update preview if in preview mode
-        if (this.previewMode) {
-            this.updatePreview();
+        if (value) {
+            this.setPlaceholderMapping(placeholder, {
+                type: 'custom',
+                value: value
+            }, placeholderElement);
+        }
+        
+        customInput.focus();
+    }
+
+    // New method to update custom text
+    updateCustomText(placeholder, value, placeholderElement) {
+        if (value.trim()) {
+            this.setPlaceholderMapping(placeholder, {
+                type: 'custom',
+                value: value.trim()
+            }, placeholderElement);
         }
     }
 
-    clearMapping(placeholder, placeholderElement) {
-        // Remove mapping
-        delete this.mappings[placeholder];
-        
-        // Update UI
+    // New method to update placeholder display based on mapping type
+    updatePlaceholderDisplay(placeholder, placeholderElement) {
+        const mapping = this.mappings[placeholder];
         const dropZone = placeholderElement.querySelector('.drop-zone');
         const mappedColumn = placeholderElement.querySelector('.mapped-column');
         const clearBtn = placeholderElement.querySelector('.clear-mapping-btn');
+        const customInput = placeholderElement.querySelector('.custom-text-input');
         
-        dropZone.style.display = 'block';
-        mappedColumn.style.display = 'none';
-        clearBtn.style.display = 'none';
+        if (!mapping) {
+            // No mapping - show drop zone
+            dropZone.style.display = 'block';
+            mappedColumn.style.display = 'none';
+            clearBtn.style.display = 'none';
+            placeholderElement.classList.remove('mapped', 'custom-mapped', 'default-mapped');
+            
+            // Clear custom input
+            if (customInput) {
+                customInput.value = '';
+            }
+            return;
+        }
         
-        placeholderElement.classList.remove('mapped');
+        // Show clear button for any type of mapping
+        clearBtn.style.display = 'block';
         
-        // Update mapping count
-        this.updateMappingCount();
+        if (mapping.type === 'column') {
+            // Column mapping - show mapped column info
+            dropZone.style.display = 'none';
+            mappedColumn.style.display = 'block';
+            
+            const sampleData = this.textParser.filteredData[this.sampleRowIndex] || [];
+            const sampleValue = sampleData[mapping.columnIndex] || '';
+            
+            mappedColumn.querySelector('.mapped-column-name').textContent = mapping.value;
+            mappedColumn.querySelector('.mapped-column-preview').textContent = this.truncateText(sampleValue, 40);
+            
+            placeholderElement.classList.add('mapped');
+            placeholderElement.classList.remove('custom-mapped', 'default-mapped');
+            
+            // Clear custom input when using column mapping
+            if (customInput) {
+                const defaultValue = this.defaultFieldValues[placeholder] || '';
+                customInput.value = defaultValue;
+            }
+        } else {
+            // Custom or default text - show in drop zone with different styling
+            dropZone.style.display = 'block';
+            mappedColumn.style.display = 'none';
+            
+            const displayText = mapping.type === 'default' ? 
+                `Default: ${mapping.value}` : 
+                `Custom: ${mapping.value}`;
+            
+            dropZone.textContent = displayText;
+            dropZone.classList.add(mapping.type === 'default' ? 'default-value' : 'custom-value');
+            
+            placeholderElement.classList.add(mapping.type === 'default' ? 'default-mapped' : 'custom-mapped');
+            placeholderElement.classList.remove('mapped');
+            
+            // Update custom input field with the mapping value
+            if (customInput) {
+                customInput.value = mapping.value || '';
+            }
+        }
+    }
+
+    mapColumnToPlaceholder(columnName, columnIndex, placeholder, placeholderElement) {
+        // Store mapping with new structure
+        this.setPlaceholderMapping(placeholder, {
+            type: 'column',
+            value: columnName,
+            columnIndex: columnIndex
+        }, placeholderElement);
         
-        // Update preview if in preview mode
-        if (this.previewMode) {
-            this.updatePreview();
+        // Clear any custom text since we're now using column mapping
+        const customInput = placeholderElement.querySelector('.custom-text-input');
+        const defaultValue = this.defaultFieldValues[placeholder] || '';
+        customInput.value = defaultValue;
+        customInput.placeholder = defaultValue ? `Default: ${defaultValue}` : 'Enter custom text...';
+    }
+
+    clearMapping(placeholder, placeholderElement) {
+        // Check if we have a default value to fall back to
+        const defaultValue = this.defaultFieldValues[placeholder] || '';
+        
+        if (defaultValue) {
+            // Revert to default value
+            this.setPlaceholderMapping(placeholder, {
+                type: 'default',
+                value: defaultValue
+            }, placeholderElement);
+            
+            // Update custom input
+            const customInput = placeholderElement.querySelector('.custom-text-input');
+            customInput.value = defaultValue;
+        } else {
+            // Remove mapping completely
+            delete this.mappings[placeholder];
+            this.updatePlaceholderDisplay(placeholder, placeholderElement);
+            this.updateMappingCount();
+            
+            // Clear custom input
+            const customInput = placeholderElement.querySelector('.custom-text-input');
+            customInput.value = '';
         }
     }
 
@@ -611,14 +766,13 @@ class TemplateEditor {
     }
 
     clearAllMappings() {
-        this.mappings = {};
-        
+        // Instead of completely clearing, revert to default values where available
         this.placeholderElements.forEach(placeholderElement => {
             const placeholder = placeholderElement.dataset.placeholder;
             this.clearMapping(placeholder, placeholderElement);
         });
         
-        this.showMessage('All mappings cleared', 'info');
+        this.showMessage('All mappings cleared, reverted to default values where available', 'info');
     }
 
     updateMappingCount() {
@@ -699,11 +853,28 @@ class TemplateEditor {
         return limitedData.map(row => {
             const mappedRow = {};
             
-            // Create mapping for each placeholder to its corresponding data value
+            // Create mapping for each placeholder based on its type
             Object.keys(this.mappings).forEach(placeholder => {
-                const columnName = this.mappings[placeholder];
-                const columnIndex = headers.indexOf(columnName);
-                mappedRow[placeholder] = row[columnIndex] || ''; // Key by placeholder, not columnName
+                const mapping = this.mappings[placeholder];
+                
+                if (mapping.type === 'column') {
+                    // Use data from the specified column
+                    const columnIndex = headers.indexOf(mapping.value);
+                    mappedRow[placeholder] = row[columnIndex] || '';
+                } else if (mapping.type === 'custom' || mapping.type === 'default') {
+                    // Use the static value (custom text or default value)
+                    mappedRow[placeholder] = mapping.value || '';
+                } else {
+                    // Fallback for any unmapped placeholders - clear them
+                    mappedRow[placeholder] = '';
+                }
+            });
+            
+            // Handle any placeholders that aren't in mappings at all - clear them
+            this.allPlaceholders.forEach(placeholder => {
+                if (!(placeholder in mappedRow)) {
+                    mappedRow[placeholder] = '';
+                }
             });
             
             return mappedRow;
@@ -923,16 +1094,27 @@ class TemplateEditor {
         
         this.placeholderElements.forEach(placeholderElement => {
             const placeholder = placeholderElement.dataset.placeholder;
-            const columnName = this.mappings[placeholder];
+            const mapping = this.mappings[placeholder];
             
-            if (columnName) {
-                const columnIndex = headers.indexOf(columnName);
-                this.mapColumnToPlaceholder(
-                    columnName, 
-                    columnIndex, 
-                    placeholder, 
-                    placeholderElement
-                );
+            if (mapping) {
+                if (mapping.type === 'column') {
+                    const columnIndex = headers.indexOf(mapping.value);
+                    this.mapColumnToPlaceholder(
+                        mapping.value, 
+                        columnIndex, 
+                        placeholder, 
+                        placeholderElement
+                    );
+                } else {
+                    // Custom or default mapping
+                    this.setPlaceholderMapping(placeholder, mapping, placeholderElement);
+                    
+                    // Update the custom input field
+                    const customInput = placeholderElement.querySelector('.custom-text-input');
+                    if (customInput) {
+                        customInput.value = mapping.value;
+                    }
+                }
             } else {
                 this.clearMapping(placeholder, placeholderElement);
             }

@@ -31,8 +31,10 @@ const defaultFieldValues = {
     "Sanctioning Officer": "Harmana Ram - 125245",
     "Branch Manager": "Harmana Ram - 125245",
     "INSPECTING OFFICIAL":"Nitin Kotwar-139535",
+    "Inspecting Official":"Nitin Kotwar-139535",
     "Inspecting Officer":"Nitin Kotwar-139535",
     "PF of Inspecting Officer":"139535",
+    "PF":"139535",
     "MAKER": "131246",
     "CHECKER Name":"Nitin Kotwar",
     "CHECKER PF": "139535",
@@ -100,6 +102,11 @@ const defaultFieldValues = {
     "Beneficiary Bank": "",
     "Beneficiary Branch": "",
     "Fund TRF Purpose": "",
+    "Net Worth": "400000",
+    "Vehicle No.": "NA",
+    "Turnover": "200000",
+    "Vehicle No.": "NA",
+    "Occupation": "NA",
 };
 
 const presets = {
@@ -371,3 +378,9 @@ const accountDetails = {
         "Fund TRF Purpose": "Vendor Bill Payment"
     }
 };
+
+// Make defaultFieldValues available globally for template editor
+if (typeof window !== 'undefined') {
+    window.defaultFieldValues = defaultFieldValues;
+    console.log('Constants.js: defaultFieldValues assigned to window with', Object.keys(defaultFieldValues).length, 'entries');
+}
