@@ -87,6 +87,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 }, 50);
             }
 
+            // NEW: Focus on bookmarks search when that tab is selected
+            if (targetTab === 'bookmarks') {
+                setTimeout(() => {
+                    if (window.bookmarksManager) {
+                        window.bookmarksManager.focusSearch();
+                    }
+                }, 50);
+            }
+
             // NEW: Initialize text parser when that tab is selected
             if (targetTab === 'text-parser') {
                 if (window.textParser) {
@@ -141,6 +150,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     const searchInput = document.getElementById('cbsSearchInput');
                     if (searchInput) {
                         searchInput.focus();
+                    }
+                }, 50);
+            }
+            
+            // Focus on bookmarks search when that tab is selected
+            if (tabName === 'bookmarks') {
+                setTimeout(() => {
+                    if (window.bookmarksManager) {
+                        window.bookmarksManager.focusSearch();
                     }
                 }, 50);
             }

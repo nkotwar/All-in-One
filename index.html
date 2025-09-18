@@ -44,6 +44,7 @@
     <link rel="stylesheet" href="css/styles/pages/_snap-container.css" />
     <link rel="stylesheet" href="css/styles/pages/pdf-editor.css" />
     <link rel="stylesheet" href="css/styles/pages/_text-parser.css" />
+    <link rel="stylesheet" href="css/styles/pages/_bookmarks.css" />
 
     <link rel="stylesheet" href="css/styles/responsive.css" />
     <link rel="stylesheet" href="css/styles/viewer.css" />
@@ -75,6 +76,7 @@
 
     <!-- Legacy Core Scripts -->
     <script src="js/core/eventHandlers.js" defer></script>
+    <script src="js/core/bookmarks.js" defer></script>
     <script src="js/core/main.js" defer></script>
     <script src="js/core/utils.js" defer></script>
     <script src="js/core/constants.js" defer></script>
@@ -108,6 +110,7 @@
     <script src="js/modules/text-parser/sdvAccountsParser.js" defer></script>
     <script src="js/modules/text-parser/cgtmseClaimsParser.js" defer></script>
     <script src="js/modules/text-parser/glbReportParser.js" defer></script>
+    <script src="js/modules/bookmarks/bookmarksManager.js" defer></script>
 
   <!-- File Hub Router (must load after modules) -->
   <script src="js/modules/file-hub/fileHub.js" defer></script>
@@ -139,6 +142,9 @@
           </li>
           <li data-tab="file-parser">
             <i class="material-icons">folder_open</i> File Parser
+          </li>
+          <li data-tab="bookmarks">
+            <i class="material-icons">bookmark</i> Bookmarks
           </li>
         </ul>
 
@@ -1166,6 +1172,71 @@
                     <!-- Statistics will be generated dynamically -->
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bookmarks Section -->
+      <div id="bookmarks" class="content">
+        <h2>Bookmarks</h2>
+        <div class="bookmarks-container">
+          <!-- Search Input -->
+          <div class="bookmarks-search-container">
+            <input
+              type="text"
+              id="bookmarksSearchInput"
+              placeholder="Start typing to search..."
+              autofocus
+            />
+            <i class="material-icons search-icon">search</i>
+          </div>
+          
+          <!-- Quick Stats -->
+          <div class="bookmarks-stats" id="bookmarksStats">
+            <div class="stat-item">
+              <span class="stat-number" id="accountsCount">0</span>
+              <span class="stat-label">Accounts</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-number" id="urlsCount">0</span>
+              <span class="stat-label">URLs</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-number" id="filteredCount">0</span>
+              <span class="stat-label">Showing</span>
+            </div>
+          </div>
+
+          <!-- No Results Message -->
+          <div class="no-results" id="noResults" style="display: none;">
+            <i class="material-icons">search_off</i>
+            <h3>No matches found</h3>
+            <p>Try a different search term or browse all items below</p>
+          </div>
+
+          <!-- Results Container -->
+          <div class="bookmarks-results" id="bookmarksResults">
+            <!-- Account Cards -->
+            <div class="accounts-section">
+              <h3 class="section-title">
+                <i class="material-icons">account_balance</i>
+                Account Numbers
+              </h3>
+              <div class="cards-grid" id="accountsGrid">
+                <!-- Account cards will be populated here -->
+              </div>
+            </div>
+
+            <!-- URL Cards -->
+            <div class="urls-section">
+              <h3 class="section-title">
+                <i class="material-icons">link</i>
+                Websites & Portals
+              </h3>
+              <div class="cards-grid" id="urlsGrid">
+                <!-- URL cards will be populated here -->
               </div>
             </div>
           </div>
