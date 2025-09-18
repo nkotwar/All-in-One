@@ -1,14 +1,11 @@
 /**
  * SDV Accounts Parser
- * Handles Safe Deposit Vault (Lockers) Accounts reports from Central Bank of India
+ * Parses SDV (Safe Deposit Vault) accounts data from Central Bank of India reports
  */
-
-const SDV_DEBUG = false;
-const sdvDbg = (...args) => { if (SDV_DEBUG) console.debug(...args); };
 
 class SDVAccountsParser {
     constructor() {
-        this.columns = [
+        this.headers = [
             'SR_NO',
             'CIF_NUMBER',
             'SDV_ACCOUNT_NUMBER',
@@ -23,6 +20,7 @@ class SDVAccountsParser {
             'PAID_UPTO_DATE',
             'KEY_STATUS',
             'LOCKER_STATUS',
+            'SUB_CAT',
             'FEE_WAIVED',
             'ANNUAL_RENT',
             'CAUTION_ACCOUNT',
@@ -32,219 +30,627 @@ class SDVAccountsParser {
         ];
     }
 
+    /**
+     * Parse SDV accounts data from text content
+     * @param {string} content - Raw text content from the file
+     * @returns {Object} Parsed data with headers and rows
+     */
     parse(content) {
         try {
-            sdvDbg('SDV Accounts Parser: Starting parse');
-            
             const lines = content.split('\n');
             const dataRows = [];
-            let totalDueAmount = 0;
-            let reportSummary = {
-                totalRecords: 0,
-                activeLockers: 0,
-                lockerHoldersWithDues: 0,
-                totalDueAmount: 0,
-                branchInfo: {},
-                reportDate: null
-            };
-
-            // Extract header information
-            for (const line of lines) {
-                if (line.includes('HOME BRANCH CODE') && line.includes('BRANCH NAME')) {
+            let branchInfo = {};
+            
+            // Extract branch information and find data rows
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // Extract branch information
+                if (line.includes('HOME BRANCH CODE')) {
                     const branchMatch = line.match(/HOME BRANCH CODE\s*:\s*(\d+)\s+BRANCH NAME\s*:\s*([A-Z\s]+)/);
                     if (branchMatch) {
-                        reportSummary.branchInfo = {
-                            code: branchMatch[1].trim(),
-                            name: branchMatch[2].trim()
-                        };
+                        branchInfo.branchCode = branchMatch[1].trim();
+                        branchInfo.branchName = branchMatch[2].trim();
                     }
                 }
                 
-                if (line.includes('RUN DATE:')) {
-                    const dateMatch = line.match(/RUN DATE:\s*(\d{2}\/\d{2}\/\d{4})/);
-                    if (dateMatch) {
-                        reportSummary.reportDate = dateMatch[1];
+                // Find data rows (lines starting with |)
+                if (line.startsWith('|') && line.includes('|')) {
+                    const parsedRow = this.parseDataRow(line);
+                    if (parsedRow && parsedRow.length === this.headers.length) {
+                        dataRows.push(parsedRow);
                     }
                 }
             }
-
-            // Parse data lines
-            for (const line of lines) {
-                // Skip headers, separators, and empty lines
-                if (this.isDataLine(line)) {
-                    const rowData = this.parseDataLine(line);
-                    if (rowData) {
-                        dataRows.push(rowData);
-                        
-                        // Update statistics
-                        const dueAmount = parseFloat(rowData.DUE_AMOUNT) || 0;
-                        totalDueAmount += dueAmount;
-                        
-                        if (dueAmount > 0) {
-                            reportSummary.lockerHoldersWithDues++;
-                        }
-                        
-                        if (rowData.LOCKER_STATUS === 'ACTIVE') {
-                            reportSummary.activeLockers++;
-                        }
-                    }
-                }
-            }
-
-            reportSummary.totalRecords = dataRows.length;
-            reportSummary.totalDueAmount = totalDueAmount;
-
-            sdvDbg(`SDV Accounts Parser: Successfully parsed ${dataRows.length} records`);
-            sdvDbg('Summary:', reportSummary);
 
             return {
                 success: true,
+                branchInfo,
+                headers: this.headers,
                 data: dataRows,
-                headers: this.columns,
-                summary: reportSummary,
-                totalRows: dataRows.length
+                totalRecords: dataRows.length,
+                message: `Successfully parsed ${dataRows.length} SDV account records`
             };
 
         } catch (error) {
-            console.error('SDV Accounts Parser Error:', error);
             return {
                 success: false,
                 error: error.message,
+                headers: this.headers,
                 data: [],
-                headers: this.columns
+                totalRecords: 0
             };
         }
     }
 
-    isDataLine(line) {
-        // Check if line contains data (starts with |, has pipe separators, and contains numeric data)
-        const trimmed = line.trim();
-        return trimmed.startsWith('|') && 
-               trimmed.includes('|') && 
-               /\|\s*\d+\s*\|/.test(trimmed) && // Contains serial number pattern
-               !trimmed.includes('SR') && // Not header line
-               !trimmed.includes('NO.') && // Not header line
-               !trimmed.includes('____') && // Not separator line
-               !trimmed.includes('TOTAL :'); // Not total line
-    }
-
-    parseDataLine(line) {
+    /**
+     * Parse a single data row
+     * @param {string} line - Raw line from the file
+     * @returns {Array} Parsed row data
+     */
+    parseDataRow(line) {
         try {
-            // Split by | and clean up
-            const parts = line.split('|').map(part => part.trim()).filter(part => part !== '');
-            
-            if (parts.length < 19) {
-                sdvDbg('SDV Parser: Skipping line with insufficient columns:', parts.length);
-                return null;
+            // Remove leading and trailing pipes
+            let cleanLine = line.trim();
+            if (cleanLine.startsWith('|')) {
+                cleanLine = cleanLine.substring(1);
+            }
+            if (cleanLine.endsWith('|')) {
+                cleanLine = cleanLine.substring(0, cleanLine.length - 1);
             }
 
-            // Map columns to data
-            const rowData = {};
+            // Replace double pipes with single pipes first, then split
+            // This treats || the same as | - just as field separators
+            cleanLine = cleanLine.replace(/\|\|/g, '|');
             
-            rowData.SR_NO = this.cleanValue(parts[0]);
-            rowData.CIF_NUMBER = this.cleanValue(parts[1]);
-            rowData.SDV_ACCOUNT_NUMBER = this.cleanValue(parts[2]);
-            rowData.LOCKER_HOLDER = this.cleanValue(parts[3]);
-            rowData.FEE_BEARING_ACCOUNT = this.cleanValue(parts[4]);
-            rowData.CABINET_ID = this.cleanValue(parts[5]);
-            rowData.LOCKER_ID = this.cleanValue(parts[6]);
-            rowData.LOCKER_TYPE = this.cleanValue(parts[7]);
-            rowData.KEY_ID = this.cleanValue(parts[8]);
-            rowData.MODE_OF_COLLECTION = this.cleanValue(parts[9]);
-            rowData.DUE_AMOUNT = this.cleanCurrency(parts[10]);
-            rowData.PAID_UPTO_DATE = this.cleanDate(parts[11]);
-            rowData.KEY_STATUS = this.cleanValue(parts[12]);
-            rowData.LOCKER_STATUS = this.cleanValue(parts[13]);
-            rowData.FEE_WAIVED = this.cleanValue(parts[14]);
-            rowData.ANNUAL_RENT = this.cleanCurrency(parts[15]);
-            rowData.CAUTION_ACCOUNT = this.cleanValue(parts[16]);
-            rowData.PENAL_CHARGE = this.cleanCurrency(parts[17]);
-            rowData.NOMINATION = this.cleanValue(parts[18]);
-            rowData.REVISED_AGREE_OBTAINED = parts[19] ? this.cleanValue(parts[19]) : 'N/A';
+            // Split by pipe
+            let fields = cleanLine.split('|');
+            
+            // Clean up fields - trim whitespace
+            fields = fields.map((field, index) => {
+                let cleanField = field.trim();
+                
+                // Remove 'L' prefix from LOCKER_ID field for easier sorting
+                if (index === this.headers.indexOf('LOCKER_ID') && cleanField.startsWith('L')) {
+                    cleanField = cleanField.substring(1);
+                }
+                
+                return cleanField;
+            });
 
-            // Validation - ensure we have essential fields
-            if (!rowData.SR_NO || !rowData.CIF_NUMBER || !rowData.SDV_ACCOUNT_NUMBER) {
-                sdvDbg('SDV Parser: Skipping row missing essential fields');
-                return null;
+            // Ensure we have the correct number of fields
+            while (fields.length < this.headers.length) {
+                fields.push('');
             }
 
-            return rowData;
+            // Trim to exact number of headers if we have too many fields
+            if (fields.length > this.headers.length) {
+                fields.splice(this.headers.length);
+            }
+
+            return fields;
 
         } catch (error) {
-            console.error('SDV Parser: Error parsing line:', error, line);
+            console.warn('Error parsing row:', line, error);
             return null;
         }
     }
 
-    cleanValue(value) {
-        if (!value) return '';
-        return value.toString().trim();
+    /**
+     * Convert parsed data to CSV format
+     * @param {Object} parsedData - Result from parse method
+     * @returns {string} CSV formatted string
+     */
+    toCSV(parsedData) {
+        if (!parsedData.success || !parsedData.data || parsedData.data.length === 0) {
+            return '';
+        }
+
+        const csvLines = [];
+        
+        // Add headers
+        csvLines.push(parsedData.headers.join(','));
+        
+        // Add data rows
+        parsedData.data.forEach(row => {
+            // Escape fields that contain commas or quotes
+            const escapedRow = row.map(field => {
+                if (typeof field === 'string' && (field.includes(',') || field.includes('"') || field.includes('\n'))) {
+                    return `"${field.replace(/"/g, '""')}"`;
+                }
+                return field;
+            });
+            csvLines.push(escapedRow.join(','));
+        });
+
+        return csvLines.join('\n');
     }
 
-    cleanCurrency(value) {
-        if (!value) return '0.00';
-        const cleaned = value.toString().replace(/[,\s]/g, '').trim();
-        return cleaned || '0.00';
+    /**
+     * Convert parsed data to Excel-compatible format
+     * @param {Object} parsedData - Result from parse method
+     * @returns {Array} Array of objects suitable for Excel export
+     */
+    toExcel(parsedData) {
+        if (!parsedData.success || !parsedData.data || parsedData.data.length === 0) {
+            return [];
+        }
+
+        return parsedData.data.map(row => {
+            const rowObject = {};
+            parsedData.headers.forEach((header, index) => {
+                rowObject[header] = row[index] || '';
+            });
+            return rowObject;
+        });
     }
 
-    cleanDate(value) {
-        if (!value) return '';
-        return value.toString().trim();
-    }
+    /**
+     * Get summary statistics of the parsed data
+     * @param {Object} parsedData - Result from parse method
+     * @returns {Object} Summary statistics
+     */
+    getSummary(parsedData) {
+        if (!parsedData.success || !parsedData.data || parsedData.data.length === 0) {
+            return {
+                totalRecords: 0,
+                activeLockers: 0,
+                inactiveLockers: 0,
+                totalDueAmount: 0,
+                totalAnnualRent: 0
+            };
+        }
 
-    // Generate summary statistics
-    generateSummary(data) {
-        const summary = {
-            totalLockers: data.length,
-            activeLockers: 0,
-            dueAmountGreaterThanZero: 0,
-            totalDueAmount: 0,
-            averageRent: 0,
-            lockerTypes: {},
-            nominationStatus: { registered: 0, notRegistered: 0 }
-        };
+        const statusIndex = parsedData.headers.indexOf('LOCKER_STATUS');
+        const dueAmountIndex = parsedData.headers.indexOf('DUE_AMOUNT');
+        const annualRentIndex = parsedData.headers.indexOf('ANNUAL_RENT');
 
-        let totalRent = 0;
+        let activeLockers = 0;
+        let inactiveLockers = 0;
+        let totalDueAmount = 0;
+        let totalAnnualRent = 0;
 
-        data.forEach(row => {
-            // Active lockers
-            if (row.LOCKER_STATUS === 'ACTIVE') {
-                summary.activeLockers++;
+        parsedData.data.forEach(row => {
+            // Count active/inactive lockers
+            if (statusIndex >= 0 && row[statusIndex]) {
+                if (row[statusIndex].toUpperCase().includes('ACTIVE')) {
+                    activeLockers++;
+                } else {
+                    inactiveLockers++;
+                }
             }
 
-            // Due amounts
-            const dueAmount = parseFloat(row.DUE_AMOUNT) || 0;
-            if (dueAmount > 0) {
-                summary.dueAmountGreaterThanZero++;
-                summary.totalDueAmount += dueAmount;
+            // Sum due amounts
+            if (dueAmountIndex >= 0 && row[dueAmountIndex]) {
+                const dueAmount = parseFloat(row[dueAmountIndex].replace(/[^\d.-]/g, ''));
+                if (!isNaN(dueAmount)) {
+                    totalDueAmount += dueAmount;
+                }
             }
 
-            // Rent calculation
-            const rent = parseFloat(row.ANNUAL_RENT) || 0;
-            totalRent += rent;
-
-            // Locker types
-            const lockerType = row.LOCKER_TYPE || 'Unknown';
-            summary.lockerTypes[lockerType] = (summary.lockerTypes[lockerType] || 0) + 1;
-
-            // Nomination status
-            if (row.NOMINATION === 'REGISTD') {
-                summary.nominationStatus.registered++;
-            } else {
-                summary.nominationStatus.notRegistered++;
+            // Sum annual rent
+            if (annualRentIndex >= 0 && row[annualRentIndex]) {
+                const annualRent = parseFloat(row[annualRentIndex].replace(/[^\d.-]/g, ''));
+                if (!isNaN(annualRent)) {
+                    totalAnnualRent += annualRent;
+                }
             }
         });
 
-        summary.averageRent = data.length > 0 ? (totalRent / data.length).toFixed(2) : 0;
+        return {
+            totalRecords: parsedData.data.length,
+            activeLockers,
+            inactiveLockers,
+            totalDueAmount: totalDueAmount.toFixed(2),
+            totalAnnualRent: totalAnnualRent.toFixed(2),
+            branchInfo: parsedData.branchInfo
+        };
+    }
 
-        return summary;
+    /**
+     * Custom data analysis for SDV accounts
+     * @param {Object} parsedData - Result from parse method
+     * @returns {Object} Analysis results with filtering capabilities
+     */
+    getAnalysis(parsedData) {
+        if (!parsedData.success || !parsedData.data || parsedData.data.length === 0) {
+            return {
+                totalLockers: 0,
+                pendingDue: [],
+                pendingPenal: [],
+                pendingAgreement: [],
+                stats: {}
+            };
+        }
+
+        const dueAmountIndex = parsedData.headers.indexOf('DUE_AMOUNT');
+        const penalChargeIndex = parsedData.headers.indexOf('PENAL_CHARGE');
+        const revisedAgreeIndex = parsedData.headers.indexOf('REVISED_AGREE_OBTAINED');
+        const lockerIdIndex = parsedData.headers.indexOf('LOCKER_ID');
+        const holderIndex = parsedData.headers.indexOf('LOCKER_HOLDER');
+        const statusIndex = parsedData.headers.indexOf('LOCKER_STATUS');
+
+        const pendingDue = [];
+        const pendingPenal = [];
+        const pendingAgreement = [];
+
+        parsedData.data.forEach((row, index) => {
+            const rowData = {
+                rowIndex: index,
+                lockerId: row[lockerIdIndex] || '',
+                holder: row[holderIndex] || '',
+                status: row[statusIndex] || '',
+                dueAmount: row[dueAmountIndex] || '0.00',
+                penalCharge: row[penalChargeIndex] || '0.00',
+                revisedAgree: row[revisedAgreeIndex] || '',
+                fullRow: row
+            };
+
+            // Check for pending due amount (greater than 0)
+            const dueAmount = parseFloat(row[dueAmountIndex]?.replace(/[^\d.-]/g, '') || '0');
+            if (dueAmount > 0) {
+                pendingDue.push(rowData);
+            }
+
+            // Check for pending penal charge (greater than 0)
+            const penalCharge = parseFloat(row[penalChargeIndex]?.replace(/[^\d.-]/g, '') || '0');
+            if (penalCharge > 0) {
+                pendingPenal.push(rowData);
+            }
+
+            // Check for pending revised agreement (not 'Y')
+            const revisedAgree = row[revisedAgreeIndex]?.trim().toUpperCase();
+            if (revisedAgree && revisedAgree !== 'Y') {
+                pendingAgreement.push(rowData);
+            }
+        });
+
+        return {
+            totalLockers: parsedData.data.length,
+            pendingDue: pendingDue.sort((a, b) => parseInt(a.lockerId) - parseInt(b.lockerId)),
+            pendingPenal: pendingPenal.sort((a, b) => parseInt(a.lockerId) - parseInt(b.lockerId)),
+            pendingAgreement: pendingAgreement.sort((a, b) => parseInt(a.lockerId) - parseInt(b.lockerId)),
+            stats: {
+                totalPendingDue: pendingDue.length,
+                totalPendingPenal: pendingPenal.length,
+                totalPendingAgreement: pendingAgreement.length,
+                totalDueAmount: pendingDue.reduce((sum, item) => 
+                    sum + parseFloat(item.dueAmount.replace(/[^\d.-]/g, '') || '0'), 0).toFixed(2),
+                totalPenalAmount: pendingPenal.reduce((sum, item) => 
+                    sum + parseFloat(item.penalCharge.replace(/[^\d.-]/g, '') || '0'), 0).toFixed(2)
+            }
+        };
+    }
+
+    /**
+     * Filter analysis results with combination options
+     * @param {Object} analysis - Result from getAnalysis method
+     * @param {Object} filters - Filter options
+     * @returns {Array} Filtered rows
+     */
+    filterAnalysis(analysis, filters = {}) {
+        const { includeDue = false, includePenal = false, includeAgreement = false, operator = 'OR' } = filters;
+
+        if (!includeDue && !includePenal && !includeAgreement) {
+            return [];
+        }
+
+        let filteredRows = [];
+        const lockerIdSet = new Set();
+
+        if (operator.toUpperCase() === 'AND') {
+            // AND operation - find rows that match ALL selected criteria
+            const dueIds = new Set(analysis.pendingDue.map(item => item.lockerId));
+            const penalIds = new Set(analysis.pendingPenal.map(item => item.lockerId));
+            const agreeIds = new Set(analysis.pendingAgreement.map(item => item.lockerId));
+
+            // Start with all locker IDs and filter down
+            let commonIds = new Set();
+            
+            if (includeDue) commonIds = new Set(dueIds);
+            if (includePenal) {
+                if (commonIds.size === 0) {
+                    commonIds = new Set(penalIds);
+                } else {
+                    commonIds = new Set([...commonIds].filter(id => penalIds.has(id)));
+                }
+            }
+            if (includeAgreement) {
+                if (commonIds.size === 0) {
+                    commonIds = new Set(agreeIds);
+                } else {
+                    commonIds = new Set([...commonIds].filter(id => agreeIds.has(id)));
+                }
+            }
+
+            // Get the full row data for common IDs
+            const allRows = [...analysis.pendingDue, ...analysis.pendingPenal, ...analysis.pendingAgreement];
+            filteredRows = allRows.filter(item => commonIds.has(item.lockerId));
+            
+            // Remove duplicates
+            const uniqueRows = [];
+            const seenIds = new Set();
+            filteredRows.forEach(row => {
+                if (!seenIds.has(row.lockerId)) {
+                    seenIds.add(row.lockerId);
+                    uniqueRows.push(row);
+                }
+            });
+            filteredRows = uniqueRows;
+
+        } else {
+            // OR operation - find rows that match ANY selected criteria
+            if (includeDue) {
+                analysis.pendingDue.forEach(item => {
+                    if (!lockerIdSet.has(item.lockerId)) {
+                        lockerIdSet.add(item.lockerId);
+                        filteredRows.push(item);
+                    }
+                });
+            }
+
+            if (includePenal) {
+                analysis.pendingPenal.forEach(item => {
+                    if (!lockerIdSet.has(item.lockerId)) {
+                        lockerIdSet.add(item.lockerId);
+                        filteredRows.push(item);
+                    }
+                });
+            }
+
+            if (includeAgreement) {
+                analysis.pendingAgreement.forEach(item => {
+                    if (!lockerIdSet.has(item.lockerId)) {
+                        lockerIdSet.add(item.lockerId);
+                        filteredRows.push(item);
+                    }
+                });
+            }
+        }
+
+        return filteredRows.sort((a, b) => parseInt(a.lockerId) - parseInt(b.lockerId));
+    }
+
+    /**
+     * Get detailed statistics for filtered results
+     * @param {Array} filteredRows - Filtered rows from filterAnalysis
+     * @returns {Object} Detailed statistics
+     */
+    getFilteredStats(filteredRows) {
+        const stats = {
+            count: filteredRows.length,
+            totalDueAmount: 0,
+            totalPenalAmount: 0,
+            statusBreakdown: {},
+            avgDueAmount: 0,
+            avgPenalAmount: 0
+        };
+
+        filteredRows.forEach(row => {
+            // Sum amounts
+            const dueAmount = parseFloat(row.dueAmount.replace(/[^\d.-]/g, '') || '0');
+            const penalAmount = parseFloat(row.penalCharge.replace(/[^\d.-]/g, '') || '0');
+            
+            stats.totalDueAmount += dueAmount;
+            stats.totalPenalAmount += penalAmount;
+
+            // Status breakdown
+            const status = row.status || 'Unknown';
+            stats.statusBreakdown[status] = (stats.statusBreakdown[status] || 0) + 1;
+        });
+
+        stats.totalDueAmount = stats.totalDueAmount.toFixed(2);
+        stats.totalPenalAmount = stats.totalPenalAmount.toFixed(2);
+        stats.avgDueAmount = (stats.totalDueAmount / (stats.count || 1)).toFixed(2);
+        stats.avgPenalAmount = (stats.totalPenalAmount / (stats.count || 1)).toFixed(2);
+
+        return stats;
+    }
+
+    /**
+     * Custom data analysis for SDV accounts
+     * @param {Object} parsedData - Result from parse method
+     * @returns {Object} Analysis results with filtering capabilities
+     */
+    getAnalysis(parsedData) {
+        if (!parsedData.success || !parsedData.data || parsedData.data.length === 0) {
+            return {
+                totalLockers: 0,
+                pendingDue: [],
+                pendingPenal: [],
+                pendingAgreement: [],
+                stats: {}
+            };
+        }
+
+        const dueAmountIndex = parsedData.headers.indexOf('DUE_AMOUNT');
+        const penalChargeIndex = parsedData.headers.indexOf('PENAL_CHARGE');
+        const revisedAgreeIndex = parsedData.headers.indexOf('REVISED_AGREE_OBTAINED');
+        const lockerIdIndex = parsedData.headers.indexOf('LOCKER_ID');
+        const holderIndex = parsedData.headers.indexOf('LOCKER_HOLDER');
+        const statusIndex = parsedData.headers.indexOf('LOCKER_STATUS');
+
+        const pendingDue = [];
+        const pendingPenal = [];
+        const pendingAgreement = [];
+
+        parsedData.data.forEach((row, index) => {
+            const rowData = {
+                rowIndex: index,
+                lockerId: row[lockerIdIndex] || '',
+                holder: row[holderIndex] || '',
+                status: row[statusIndex] || '',
+                dueAmount: row[dueAmountIndex] || '0.00',
+                penalCharge: row[penalChargeIndex] || '0.00',
+                revisedAgree: row[revisedAgreeIndex] || '',
+                fullRow: row
+            };
+
+            // Check for pending due amount (greater than 0)
+            const dueAmount = parseFloat(row[dueAmountIndex]?.replace(/[^\d.-]/g, '') || '0');
+            if (dueAmount > 0) {
+                pendingDue.push(rowData);
+            }
+
+            // Check for pending penal charge (greater than 0)
+            const penalCharge = parseFloat(row[penalChargeIndex]?.replace(/[^\d.-]/g, '') || '0');
+            if (penalCharge > 0) {
+                pendingPenal.push(rowData);
+            }
+
+            // Check for pending revised agreement (not 'Y')
+            const revisedAgree = row[revisedAgreeIndex]?.trim().toUpperCase();
+            if (revisedAgree && revisedAgree !== 'Y') {
+                pendingAgreement.push(rowData);
+            }
+        });
+
+        return {
+            totalLockers: parsedData.data.length,
+            pendingDue: pendingDue.sort((a, b) => parseInt(a.lockerId) - parseInt(b.lockerId)),
+            pendingPenal: pendingPenal.sort((a, b) => parseInt(a.lockerId) - parseInt(b.lockerId)),
+            pendingAgreement: pendingAgreement.sort((a, b) => parseInt(a.lockerId) - parseInt(b.lockerId)),
+            stats: {
+                totalPendingDue: pendingDue.length,
+                totalPendingPenal: pendingPenal.length,
+                totalPendingAgreement: pendingAgreement.length,
+                totalDueAmount: pendingDue.reduce((sum, item) => 
+                    sum + parseFloat(item.dueAmount.replace(/[^\d.-]/g, '') || '0'), 0).toFixed(2),
+                totalPenalAmount: pendingPenal.reduce((sum, item) => 
+                    sum + parseFloat(item.penalCharge.replace(/[^\d.-]/g, '') || '0'), 0).toFixed(2)
+            }
+        };
+    }
+
+    /**
+     * Filter analysis results with combination options
+     * @param {Object} analysis - Result from getAnalysis method
+     * @param {Object} filters - Filter options
+     * @returns {Array} Filtered rows
+     */
+    filterAnalysis(analysis, filters = {}) {
+        const { includeDue = false, includePenal = false, includeAgreement = false, operator = 'OR' } = filters;
+
+        if (!includeDue && !includePenal && !includeAgreement) {
+            return [];
+        }
+
+        let filteredRows = [];
+        const lockerIdSet = new Set();
+
+        if (operator.toUpperCase() === 'AND') {
+            // AND operation - find rows that match ALL selected criteria
+            const dueIds = new Set(analysis.pendingDue.map(item => item.lockerId));
+            const penalIds = new Set(analysis.pendingPenal.map(item => item.lockerId));
+            const agreeIds = new Set(analysis.pendingAgreement.map(item => item.lockerId));
+
+            // Start with all locker IDs and filter down
+            let commonIds = new Set();
+            
+            if (includeDue) commonIds = new Set(dueIds);
+            if (includePenal) {
+                if (commonIds.size === 0) {
+                    commonIds = new Set(penalIds);
+                } else {
+                    commonIds = new Set([...commonIds].filter(id => penalIds.has(id)));
+                }
+            }
+            if (includeAgreement) {
+                if (commonIds.size === 0) {
+                    commonIds = new Set(agreeIds);
+                } else {
+                    commonIds = new Set([...commonIds].filter(id => agreeIds.has(id)));
+                }
+            }
+
+            // Get the full row data for common IDs
+            const allRows = [...analysis.pendingDue, ...analysis.pendingPenal, ...analysis.pendingAgreement];
+            filteredRows = allRows.filter(item => commonIds.has(item.lockerId));
+            
+            // Remove duplicates
+            const uniqueRows = [];
+            const seenIds = new Set();
+            filteredRows.forEach(row => {
+                if (!seenIds.has(row.lockerId)) {
+                    seenIds.add(row.lockerId);
+                    uniqueRows.push(row);
+                }
+            });
+            filteredRows = uniqueRows;
+
+        } else {
+            // OR operation - find rows that match ANY selected criteria
+            if (includeDue) {
+                analysis.pendingDue.forEach(item => {
+                    if (!lockerIdSet.has(item.lockerId)) {
+                        lockerIdSet.add(item.lockerId);
+                        filteredRows.push(item);
+                    }
+                });
+            }
+
+            if (includePenal) {
+                analysis.pendingPenal.forEach(item => {
+                    if (!lockerIdSet.has(item.lockerId)) {
+                        lockerIdSet.add(item.lockerId);
+                        filteredRows.push(item);
+                    }
+                });
+            }
+
+            if (includeAgreement) {
+                analysis.pendingAgreement.forEach(item => {
+                    if (!lockerIdSet.has(item.lockerId)) {
+                        lockerIdSet.add(item.lockerId);
+                        filteredRows.push(item);
+                    }
+                });
+            }
+        }
+
+        return filteredRows.sort((a, b) => parseInt(a.lockerId) - parseInt(b.lockerId));
+    }
+
+    /**
+     * Get detailed statistics for filtered results
+     * @param {Array} filteredRows - Filtered rows from filterAnalysis
+     * @returns {Object} Detailed statistics
+     */
+    getFilteredStats(filteredRows) {
+        const stats = {
+            count: filteredRows.length,
+            totalDueAmount: 0,
+            totalPenalAmount: 0,
+            statusBreakdown: {},
+            avgDueAmount: 0,
+            avgPenalAmount: 0
+        };
+
+        filteredRows.forEach(row => {
+            // Sum amounts
+            const dueAmount = parseFloat(row.dueAmount.replace(/[^\d.-]/g, '') || '0');
+            const penalAmount = parseFloat(row.penalCharge.replace(/[^\d.-]/g, '') || '0');
+            
+            stats.totalDueAmount += dueAmount;
+            stats.totalPenalAmount += penalAmount;
+
+            // Status breakdown
+            const status = row.status || 'Unknown';
+            stats.statusBreakdown[status] = (stats.statusBreakdown[status] || 0) + 1;
+        });
+
+        stats.totalDueAmount = stats.totalDueAmount.toFixed(2);
+        stats.totalPenalAmount = stats.totalPenalAmount.toFixed(2);
+        stats.avgDueAmount = (stats.totalDueAmount / (stats.count || 1)).toFixed(2);
+        stats.avgPenalAmount = (stats.totalPenalAmount / (stats.count || 1)).toFixed(2);
+
+        return stats;
     }
 }
 
-// Auto-register this parser with the main textParser
-if (typeof window !== 'undefined' && window.textParser) {
-    window.textParser.registerParser('sdv-accounts', (content) => {
-        const parser = new SDVAccountsParser();
-        return parser.parse(content);
-    });
+// Export for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = SDVAccountsParser;
+} else if (typeof window !== 'undefined') {
+    window.SDVAccountsParser = SDVAccountsParser;
 }

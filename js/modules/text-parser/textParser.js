@@ -147,11 +147,37 @@ class TextParser {
         // Use filtered data for analysis to reflect current view
         const currentData = this.filteredData || this.data;
         
+        // Debug: log headers for SDV detection
+        console.log('Headers detected:', this.headers);
+        console.log('Metadata available:', !!this.metadata);
+        console.log('SDVAccountsParser available:', !!window.SDVAccountsParser);
+        console.log('Has LOCKER_ID header:', this.headers.includes('LOCKER_ID'));
+        console.log('Locker-related headers:', this.headers.filter(h => h.toLowerCase().includes('locker')));
+        
         // Check if this is a bank deposits report and use specialized analysis
         if (this.metadata && window.BankDepositsParser && this.headers.includes('Customer Number')) {
             const parser = new window.BankDepositsParser();
             const bankingReport = parser.generateBankingReport(currentData, this.metadata);
             stats = this.combineBankingAnalysis(this.calculateStatistics(currentData), bankingReport);
+        } else if ((this.metadata && window.SDVAccountsParser && (this.headers.includes('LOCKER_ID') || this.headers.includes('Locker ID') || this.headers.some(h => h.toLowerCase().includes('locker')))) || 
+                   (this.currentFileName && this.currentFileName.toLowerCase().includes('sdv'))) {
+            // Use specialized SDV analysis
+            console.log('🔍 Applying SDV analysis...');
+            const sdvParser = new window.SDVAccountsParser();
+            const sdvAnalysis = sdvParser.getAnalysis(this.metadata);
+            const sdvSummary = sdvParser.getSummary(this.metadata);
+            
+            stats = {
+                type: 'sdv-accounts',
+                totalRecords: sdvSummary.totalRecords,
+                activeLockers: sdvSummary.activeLockers,
+                inactiveLockers: sdvSummary.inactiveLockers,
+                totalDueAmount: sdvSummary.totalDueAmount,
+                totalAnnualRent: sdvSummary.totalAnnualRent,
+                branchInfo: sdvSummary.branchInfo,
+                analysis: sdvAnalysis,
+                sdvParser: sdvParser // Store parser instance for filtering
+            };
         } else {
             stats = this.calculateStatistics(currentData);
         }
@@ -2018,9 +2044,12 @@ class TextParser {
             const result = parser.parse(content);
             
             if (result.success) {
+                // Store metadata for analysis
+                this.metadata = result;
+                
                 return {
                     headers: result.headers,
-                    data: result.data.map(row => Object.values(row))
+                    data: result.data
                 };
             }
         }
@@ -3049,6 +3078,17 @@ class TextParser {
                     this.addStatItem(statsGrid, count, displayStatus);
                 });
             }
+        } else if (stats.type === 'sdv-accounts') {
+            // SDV-specific stats (showing only selected ones)
+            this.addStatItem(statsGrid, stats.activeLockers, 'Active Lockers');
+            this.addStatItem(statsGrid, `₹${parseFloat(stats.totalDueAmount).toLocaleString()}`, 'Total Due Amount');
+            
+            if (stats.branchInfo && stats.branchInfo.branchCode) {
+                this.addStatItem(statsGrid, stats.branchInfo.branchCode, 'Branch Code');
+            }
+            
+            // Add SDV filtering controls
+            this.renderSDVFilters(statsGrid, stats);
         } else {
             // Basic stats for non-banking data
             this.addStatItem(statsGrid, stats.totalRows, 'Total Rows');
@@ -3056,6 +3096,211 @@ class TextParser {
             this.addStatItem(statsGrid, stats.numericColumns.length, 'Numeric Columns');
             this.addStatItem(statsGrid, stats.textColumns.length, 'Text Columns');
         }
+    }
+
+    renderSDVFilters(statsGrid, stats) {
+        // Create filter section
+        const filterSection = document.createElement('div');
+        filterSection.className = 'sdv-filter-section';
+        filterSection.style.cssText = `
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        `;
+
+        const filterTitle = document.createElement('h4');
+        filterTitle.textContent = '🔍 Filter Lockers by Issues';
+        filterTitle.style.cssText = 'margin: 0 0 10px 0; color: #495057; font-size: 14px;';
+        filterSection.appendChild(filterTitle);
+
+        // Filter checkboxes
+        const checkboxContainer = document.createElement('div');
+        checkboxContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;';
+
+        const filters = [
+            { id: 'includeDue', label: `Pending Due (${stats.analysis.stats.totalPendingDue})`, color: '#dc3545' },
+            { id: 'includePenal', label: `Pending Penal (${stats.analysis.stats.totalPendingPenal})`, color: '#fd7e14' },
+            { id: 'includeAgreement', label: `Pending Agreement (${stats.analysis.stats.totalPendingAgreement})`, color: '#6f42c1' }
+        ];
+
+        // Store current checkbox states before rendering
+        const currentStates = {};
+        filters.forEach(filter => {
+            const existingCheckbox = document.getElementById(filter.id);
+            if (existingCheckbox) {
+                currentStates[filter.id] = existingCheckbox.checked;
+            }
+        });
+
+        // Store current operator state
+        const existingOperator = document.getElementById('sdvOperator');
+        const currentOperator = existingOperator ? existingOperator.value : 'OR';
+
+        filters.forEach(filter => {
+            const checkboxDiv = document.createElement('div');
+            checkboxDiv.style.cssText = 'display: flex; align-items: center; gap: 5px;';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = filter.id;
+            checkbox.style.cssText = 'margin: 0;';
+            
+            // Restore previous state if it existed
+            if (currentStates[filter.id] !== undefined) {
+                checkbox.checked = currentStates[filter.id];
+            }
+
+            const label = document.createElement('label');
+            label.setAttribute('for', filter.id);
+            label.textContent = filter.label;
+            label.style.cssText = `color: ${filter.color}; font-weight: 500; font-size: 12px; cursor: pointer; margin: 0;`;
+
+            checkboxDiv.appendChild(checkbox);
+            checkboxDiv.appendChild(label);
+            checkboxContainer.appendChild(checkboxDiv);
+        });
+
+        filterSection.appendChild(checkboxContainer);
+
+        // Operator selection
+        const operatorContainer = document.createElement('div');
+        operatorContainer.style.cssText = 'display: flex; align-items: center; gap: 10px; margin-bottom: 10px;';
+
+        const operatorLabel = document.createElement('label');
+        operatorLabel.textContent = 'Combine:';
+        operatorLabel.style.cssText = 'font-size: 12px; font-weight: 500; margin: 0;';
+
+        const operatorSelect = document.createElement('select');
+        operatorSelect.id = 'sdvOperator';
+        operatorSelect.style.cssText = 'padding: 2px 6px; font-size: 12px; border: 1px solid #ced4da; border-radius: 4px;';
+        operatorSelect.innerHTML = `
+            <option value="OR">Any (OR)</option>
+            <option value="AND">All (AND)</option>
+        `;
+        
+        // Restore previous operator state
+        operatorSelect.value = currentOperator;
+
+        operatorContainer.appendChild(operatorLabel);
+        operatorContainer.appendChild(operatorSelect);
+        filterSection.appendChild(operatorContainer);
+
+        // Action buttons
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.cssText = 'display: flex; gap: 8px;';
+
+        const applyButton = document.createElement('button');
+        applyButton.textContent = 'Apply Filter';
+        applyButton.style.cssText = `
+            padding: 6px 12px;
+            font-size: 12px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        `;
+        applyButton.onclick = () => this.applySDVFilter(stats);
+
+        const clearButton = document.createElement('button');
+        clearButton.textContent = 'Clear';
+        clearButton.style.cssText = `
+            padding: 6px 12px;
+            font-size: 12px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        `;
+        clearButton.onclick = () => this.clearSDVFilter();
+
+        buttonContainer.appendChild(applyButton);
+        buttonContainer.appendChild(clearButton);
+        filterSection.appendChild(buttonContainer);
+
+        statsGrid.appendChild(filterSection);
+    }
+
+    applySDVFilter(stats) {
+        const includeDue = document.getElementById('includeDue')?.checked || false;
+        const includePenal = document.getElementById('includePenal')?.checked || false;
+        const includeAgreement = document.getElementById('includeAgreement')?.checked || false;
+        const operator = document.getElementById('sdvOperator')?.value || 'OR';
+
+        console.log('🔍 Filter options:', { includeDue, includePenal, includeAgreement, operator });
+
+        if (!includeDue && !includePenal && !includeAgreement) {
+            this.showMessage('Please select at least one filter option.', 'warning');
+            return;
+        }
+
+        const filteredRows = stats.sdvParser.filterAnalysis(stats.analysis, {
+            includeDue,
+            includePenal,
+            includeAgreement,
+            operator
+        });
+
+        console.log('📊 Filtered rows count:', filteredRows.length);
+        console.log('📊 Sample filtered row:', filteredRows[0]);
+
+        if (filteredRows.length === 0) {
+            this.showMessage('No lockers found matching the selected criteria.', 'info');
+            return;
+        }
+
+        // Clear existing column filters (but don't reset data)
+        this.columnFilters = {};
+        
+        // Clear search box
+        const searchTable = document.getElementById('searchTable');
+        if (searchTable) {
+            searchTable.value = '';
+        }
+
+        // Apply filter to show only matching rows - map by row index instead of fullRow
+        this.filteredData = filteredRows.map(item => this.data[item.rowIndex]);
+        this.currentPage = 1;
+
+        console.log('📊 Setting filteredData length:', this.filteredData.length);
+        console.log('📊 Sample filtered data row:', this.filteredData[0]);
+
+        // Update display
+        console.log('🔄 Calling renderTable...');
+        this.renderTable();
+        console.log('✅ renderTable completed');
+        
+        // Trigger analysis with a small delay to ensure filteredData is preserved
+        setTimeout(() => {
+            this.markAnalysisDirty();
+        }, 50);
+
+        // Show success message
+        const filterStats = stats.sdvParser.getFilteredStats(filteredRows);
+        this.showMessage(
+            `Filter applied: ${filteredRows.length} lockers found. Total Due: ₹${filterStats.totalDueAmount}, Total Penal: ₹${filterStats.totalPenalAmount}`,
+            'success'
+        );
+    }
+
+    clearSDVFilter() {
+        // Clear checkboxes
+        ['includeDue', 'includePenal', 'includeAgreement'].forEach(id => {
+            const checkbox = document.getElementById(id);
+            if (checkbox) checkbox.checked = false;
+        });
+
+        // Reset operator
+        const operatorSelect = document.getElementById('sdvOperator');
+        if (operatorSelect) operatorSelect.value = 'OR';
+
+        // Clear all filters
+        this.clearAllFilters();
     }
 
     showFilterDropdown(columnIndex, buttonElement) {

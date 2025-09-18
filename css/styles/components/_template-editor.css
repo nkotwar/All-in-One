@@ -1,4 +1,4 @@
-/* Template Editor Styles */
+/* Template Editor Styles - Performance Optimized */
 
 /* Editor Modal */
 .template-editor-overlay {
@@ -14,8 +14,8 @@
     justify-content: center;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(6px);
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    /* Removed backdrop-filter for better performance */
 }
 
 .template-editor-overlay.show {
@@ -30,14 +30,17 @@
     max-width: 1400px;
     overflow: hidden;
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
-    transform: scale(0.8) translateY(40px);
-    transition: all 0.3s ease;
+    transform: scale(0.9);
+    transition: transform 0.2s ease;
     display: flex;
     flex-direction: column;
+    /* Performance optimization */
+    will-change: transform;
+    contain: layout style paint;
 }
 
 .template-editor-overlay.show .template-editor-content {
-    transform: scale(1) translateY(0);
+    transform: scale(1);
 }
 
 /* Editor Header */
@@ -138,6 +141,7 @@
     height: calc(90vh - 140px); /* Modal height minus header and padding */
 }
 
+/* Editor Panel - Performance Optimized */
 .editor-panel {
     background: #f8f9fa;
     border-radius: 8px;
@@ -146,6 +150,11 @@
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
+    /* Performance optimizations */
+    will-change: scroll-position;
+    contain: layout style paint;
+    /* Use hardware acceleration for transforms */
+    transform: translateZ(0);
 }
 
 .editor-panel h4 {
@@ -164,8 +173,7 @@
     font-style: italic;
 }
 
-/* Columns Panel */
-/* Columns Panel */
+/* Columns Panel - Performance Optimized */
 .editor-columns-panel {
     border-left: 4px solid #28a745;
 }
@@ -173,10 +181,16 @@
 .columns-container {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    max-height: calc(90vh - 200px); /* Force scrolling when needed */
+    max-height: calc(90vh - 200px);
+    /* Performance optimizations */
+    will-change: scroll-position;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: auto;
+    contain: layout style paint;
 }
 
 .draggable-column {
@@ -185,8 +199,9 @@
     border-radius: 6px;
     padding: 12px;
     cursor: grab;
-    transition: all 0.2s ease;
     user-select: none;
+    /* Remove transition for better scroll performance */
+    /* transition: all 0.2s ease; */
 }
 
 .draggable-column:hover {
@@ -198,6 +213,8 @@
     opacity: 0.6;
     transform: rotate(5deg);
     cursor: grabbing;
+    /* Add transition only when dragging */
+    transition: opacity 0.1s ease;
 }
 
 .column-header {
@@ -265,6 +282,7 @@
     font-size: 12px;
 }
 
+/* Placeholders Container - Performance Optimized */
 .placeholders-container {
     flex: 1;
     overflow-y: auto;
@@ -272,8 +290,13 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    min-height: 0; /* Important for flex children with overflow */
-    padding-right: 8px; /* Space for scrollbar */
+    min-height: 0;
+    padding-right: 8px;
+    /* Performance optimizations */
+    will-change: scroll-position;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: auto;
+    contain: layout style paint;
 }
 
 .placeholder-item {
@@ -281,7 +304,8 @@
     border: 1px solid #dee2e6;
     border-radius: 6px;
     padding: 12px;
-    transition: all 0.2s ease;
+    /* Remove transition for better scroll performance */
+    /* transition: all 0.2s ease; */
 }
 
 .placeholder-item.mapped {
@@ -360,6 +384,7 @@
     display: block;
 }
 
+/* Performance Optimized Drop Zone and Animations */
 .drop-zone {
     border: 2px dashed #007bff;
     border-radius: 6px;
@@ -368,8 +393,9 @@
     color: #007bff;
     font-size: 12px;
     cursor: pointer;
-    transition: all 0.2s ease;
     background: rgba(0, 123, 255, 0.05);
+    /* Simplified transition */
+    transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .drop-zone:hover,
@@ -384,6 +410,45 @@
     border: 1px solid #2196f3;
     border-radius: 6px;
     padding: 10px;
+}
+
+/* Remove excessive transitions from interactive elements during scroll */
+.custom-text-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 12px;
+    background: white;
+    box-sizing: border-box;
+    /* Only transition on focus */
+    transition: none;
+}
+
+.custom-text-input:focus {
+    border-color: #17a2b8;
+    box-shadow: 0 0 0 2px rgba(23, 162, 184, 0.2);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Simplified button transitions */
+.use-custom-btn {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: background-color 0.15s ease;
+}
+
+.use-custom-btn:hover {
+    background: #138496;
 }
 
 .mapped-column-name {
@@ -541,16 +606,16 @@
     flex-shrink: 0;
 }
 
+/* Column Selector - Performance Optimized */
 .column-selector-list {
-    /* Let flexbox handle the height naturally */
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    
     /* Optimize scrolling performance */
-    -webkit-overflow-scrolling: touch; /* iOS smooth scrolling */
-    scroll-behavior: auto; /* Disable smooth scrolling for better performance */
-    will-change: scroll-position; /* Hint browser for optimization */
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: auto;
+    will-change: scroll-position;
+    contain: layout style paint;
 }
 
 .column-selector-item {
@@ -561,9 +626,8 @@
     justify-content: space-between;
     align-items: center;
     min-height: 40px;
-    outline: none; /* Remove default focus outline */
-    
-    /* Remove transitions for better scrolling performance */
+    outline: none;
+    /* Remove transition for better scroll performance */
     /* transition: background-color 0.2s ease; */
 }
 
@@ -784,7 +848,7 @@
     }
 }
 
-/* Custom Scrollbars */
+/* Optimized Scrollbars - Simpler styling for better performance */
 .columns-container::-webkit-scrollbar,
 .placeholders-container::-webkit-scrollbar,
 .preview-content::-webkit-scrollbar,
@@ -796,15 +860,14 @@
 .placeholders-container::-webkit-scrollbar-track,
 .preview-content::-webkit-scrollbar-track,
 .column-selector-list::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 3px;
+    background: #f8f9fa;
 }
 
 .columns-container::-webkit-scrollbar-thumb,
 .placeholders-container::-webkit-scrollbar-thumb,
 .preview-content::-webkit-scrollbar-thumb,
 .column-selector-list::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
+    background: #dee2e6;
     border-radius: 3px;
 }
 
@@ -812,7 +875,7 @@
 .placeholders-container::-webkit-scrollbar-thumb:hover,
 .preview-content::-webkit-scrollbar-thumb:hover,
 .column-selector-list::-webkit-scrollbar-thumb:hover {
-    background: #a1a1a1;
+    background: #adb5bd;
 }
 
 /* Custom Text Input Styles */
